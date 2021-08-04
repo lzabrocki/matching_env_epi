@@ -1,0 +1,203 @@
+---
+title: "Data Wrangling"
+description: |
+  Cleaning Marie-Abèle and Tarik's Data.
+author:
+  - name: Léo Zabrocki 
+    url: https://www.parisschoolofeconomics.eu/en/
+    affiliation: Paris School of Economics
+    affiliation_url: https://www.parisschoolofeconomics.eu/en/
+date: "`r Sys.Date()`"
+output: 
+    distill::distill_article:
+      toc: true
+      toc_depth: 3
+---
+
+<style>
+body {
+text-align: justify}
+</style>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = FALSE, warning = FALSE)
+```
+
+In this document, I am cleaning the `withoutcomes.csv` file shared by Tarik. **Should you find coding errors, please do not hesitate to contact me at leo.zabrocki@psemail.eu**
+
+# Required Packages and Data Loading
+
+The following packages are required to clean the data:
+
+```{r, echo = TRUE}
+# load required packages
+library(here) # for files paths organization
+library(tidyverse) # for data manipulation and visualization
+library(fastDummies) # for creating dummy variables
+library(lubridate) # for dealing with dates
+```
+
+We load the data:
+
+```{r, echo = TRUE}
+# load the data
+data <-
+  read.csv(here::here("1.data", "withoutcomes.csv"))
+```
+
+# Data Wrangling
+
+### Time Indicators
+
+We clean and create time indicators:
+
+```{r, echo = TRUE}
+# create relevant time indicators
+data <- data %>%
+# clean the date variable
+  rename(date = "ï..date") %>%
+  mutate(date = lubridate::mdy(date)) %>%
+# add weekday, week, month and year indicators
+  mutate(
+    weekday = lubridate::wday(date, label = TRUE, abbr = FALSE) %>% str_to_lower(.),
+    week = lubridate::week(date),
+    month = lubridate::month(date, label = TRUE, abbr = FALSE) %>% str_to_lower(.),
+    year = lubridate::year(date)
+  )
+```
+
+We add dummy variables for each time indicator:
+
+```{r, echo = TRUE}
+# add dummies
+data <- data %>%
+  fastDummies::dummy_cols(., select_columns = c("weekday", "week", "month", "year"))
+```
+
+
+### Weather Variables
+
+We rename weather variables:
+
+```{r, echo = TRUE}
+# rename air pollutant variables
+data <- data %>%
+  rename(
+    "humidity_relative" = "humrel",
+    "temperature_average" = "meantemp",
+    "temperature_maximum" = "maxtemp",
+    "temperature_minimum" = "mintemp",
+    "heat_wave" = "HW",
+    "heat_wave_lag_1" = "HW_lag1",
+    "heat_wave_lag_2" = "HW_lag2",
+    "heat_wave_lag_3" = "HW_lag3",
+    "heat_wave_lag_0_2" = "HW_lag0_2"
+  )
+```
+
+### Air Pollution Variables
+
+We rename air pollutant variables:
+
+```{r, echo = TRUE}
+# rename air pollutant variables
+data <- data %>%
+  rename(
+    "o3_lag_1" = "o3_lag1",
+    "o3_lag_2" = "o3_lag2",
+    "o3_lag_3" = "o3_lag3",
+    "no2_lag_1" = "no2_lag1",
+    "no2_lag_2" = "no2_lag2",
+    "no2_lag_3" = "no2_lag3"
+  )
+```    
+    
+### Health Outcome
+
+We rename the years of life lost variable:
+
+```{r, echo = TRUE}
+# rename years of life lost variable
+data <- data %>%
+  rename("yll" = "YLL")
+```    
+
+### Reordering Variables and Saving the Data
+
+We reorder and select relevant variables:
+
+```{r, echo = TRUE}
+# reorder variables
+data <- data %>%
+  select(
+    # unit id and date
+    id,
+    date,
+    weekday,
+    week,
+    month,
+    year,
+    # health outcomes
+    yll,
+    total_death,
+    # weather variables
+    heat_wave:heat_wave_lag_3,
+    heat_wave_lag_0_2,
+    humidity_relative:temperature_minimum,
+    # air pollutants
+    o3,
+    o3_lag_1:o3_lag_3,
+    no2,
+    no2_lag_1:no2_lag_3,
+    # time indicator dummies
+    weekday_monday,
+    weekday_tuesday,
+    weekday_wednesday,
+    weekday_thursday,
+    weekday_friday,
+    weekday_saturday,
+    weekday_sunday,
+    week_24:week_35,
+    month_june,
+    month_july,
+    month_august,
+    year_1990:year_2007
+  )
+```    
+
+In her script, M-A drops units with missing observations:
+
+```{r, echo = TRUE}
+# drop observations with missing values
+data <- data %>%
+  drop_na()
+```    
+
+We add again the unit id variable:
+
+```{r, echo = TRUE}
+# add unit id
+data <- data %>%
+  mutate(id = 1:n())
+```
+
+We finally save the data:
+
+```{r, echo = TRUE}
+# save the data
+saveRDS(data, here::here("1.data", "raw_environmental_data.rds"))
+```    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
