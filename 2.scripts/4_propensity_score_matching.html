@@ -1488,7 +1488,7 @@ code span.wa { color: #5e5e5e; font-style: italic; } /* Warning */
 <nav class="l-text toc figcaption" id="TOC">
 <h3>Contents</h3>
 <ul>
-<li><a href="#required-packages">Required Packages</a></li>
+<li><a href="#required-packages-and-data-loading">Required Packages and Data Loading</a></li>
 <li><a href="#propensity-score-matching">Propensity Score Matching</a>
 <ul>
 <li><a href="#matching-procedure">Matching Procedure</a></li>
@@ -1501,7 +1501,7 @@ body {
 text-align: justify}
 </style>
 <p>In this document, we provide all steps and R codes required to estimate the effect of heat waves of the number of years of life lost (YoLL) using propensity score matching. The implementation is done with the fantastic package <a href="https://kosukeimai.github.io/MatchIt/index.html">MatchIt</a>: do not hesitate to explore its very well-made documentation. <strong>Should you have any questions, need help to reproduce the analysis or find coding errors, please do not hesitate to contact us at <a href="mailto:leo.zabrocki@psemail.eu" class="email">leo.zabrocki@psemail.eu</a></strong></p>
-<h1 id="required-packages">Required Packages</h1>
+<h1 id="required-packages-and-data-loading">Required Packages and Data Loading</h1>
 <p>To reproduce exactly the <code>4_propensity_score_matching.html</code> document, we first need to have installed:</p>
 <ul>
 <li>the <a href="https://www.r-project.org/">R</a> programming language</li>
@@ -1523,7 +1523,7 @@ text-align: justify}
 </code></pre>
 </div>
 </div>
-<p>We finally load our custom <code>ggplot2</code> theme for graphs:</p>
+<p>We load our custom <code>ggplot2</code> theme for graphs:</p>
 <div class="layout-chunk" data-layout="l-body">
 <div class="sourceCode">
 <pre class="sourceCode r"><code class="sourceCode r"><span class="co"># load ggplot custom theme</span>
@@ -1538,15 +1538,213 @@ text-align: justify}
 </code></pre>
 </div>
 </div>
+<p>We finally load the data:</p>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class="co"># load the data</span>
+<span class="va">data</span> <span class="op">&lt;-</span>
+  <span class="fu"><a href="https://rdrr.io/r/base/readRDS.html">readRDS</a></span><span class="op">(</span><span class="fu">here</span><span class="fu">::</span><span class="fu"><a href="https://here.r-lib.org//reference/here.html">here</a></span><span class="op">(</span><span class="st">&quot;1.data&quot;</span>, <span class="st">&quot;simulated_environmental_data.rds&quot;</span><span class="op">)</span><span class="op">)</span>
+</code></pre>
+</div>
+</div>
+<p>As a reminder, there are 122 days where an heat wave occurred and 1254 days without heat waves.</p>
 <h1 id="propensity-score-matching">Propensity Score Matching</h1>
-<p>We implement below a propensity score matching procedure where (i) we first predict the probability of the occurence of an heat wave for each day using a simple logistic regression model and (ii) each day with an heat wave is then matched to the most similar day without heat wave. Specifically, we vary the matching distance to see how covariates balance change:</p>
+<p>We first implement below a propensity score matching procedure where:</p>
+<ul>
+<li>each day with an heat wave is matched to the most similar day without heat wave (1:1 nearest neighbor matching without replacement)</li>
+<li>the distance metric used for the matching is the propensity score which is predicted using a logistic model where we regress the heat wave dummy on its three lags, the three lags of ozone, nitrogen dioxide and its three lags, the relative humidity, the calendar indicators for the day of the week, the week and the year.</li>
+</ul>
+<p>We vary the matching distance to see how covariates balance change:</p>
 <ol type="1">
 <li>We first match each treated unit to its closest control unit.</li>
 <li>We then set the maximum distance (i.e., the caliper) allowed between a treated and control unit to be inferior 1 propensity score standard deviation.</li>
 <li>We finally set the maximum distance (i.e., the caliper) allowed between a treated and control unit to be inferior 0.5 propensity score standard deviation.</li>
 </ol>
+<p>Once treated and control units are matched, we then assess whether covariates has improved.</p>
+<p>We finally estimate the treatment effect.</p>
 <h3 id="matching-procedure">Matching Procedure</h3>
-<div class="sourceCode" id="cb1"><pre class="sourceCode r distill-force-highlighting-css"><code class="sourceCode r"></code></pre></div>
+<p>We first match each treated unit to its closest control unit without any caliper using the <code>matchit()</code> function:</p>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class="co"># match without caliper</span>
+<span class="va">matching_ps_no_calliper</span> <span class="op">&lt;-</span>
+  <span class="fu"><a href="https://kosukeimai.github.io/MatchIt/reference/matchit.html">matchit</a></span><span class="op">(</span>
+    <span class="va">heat_wave</span> <span class="op">~</span> <span class="va">heat_wave_lag_1</span> <span class="op">+</span> <span class="va">heat_wave_lag_2</span> <span class="op">+</span> <span class="va">heat_wave_lag_3</span> <span class="op">+</span> <span class="va">o3_lag_1</span> <span class="op">+</span> <span class="va">o3_lag_2</span> <span class="op">+</span> <span class="va">o3_lag_3</span> <span class="op">+</span> <span class="va">no2</span> <span class="op">+</span> <span class="va">no2_lag_1</span> <span class="op">+</span> <span class="va">no2_lag_2</span> <span class="op">+</span> <span class="va">no2_lag_3</span> <span class="op">+</span> <span class="va">humidity_relative</span> <span class="op">+</span> <span class="va">month</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html">as.factor</a></span><span class="op">(</span><span class="va">week</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html">as.factor</a></span><span class="op">(</span><span class="va">year</span><span class="op">)</span>,
+    data <span class="op">=</span> <span class="va">data</span>
+  <span class="op">)</span>
+
+<span class="co"># display summary of the procedure</span>
+<span class="va">matching_ps_no_calliper</span>
+</code></pre>
+</div>
+<pre><code>A matchit object
+ - method: 1:1 nearest neighbor matching without replacement
+ - distance: Propensity score
+             - estimated with logistic regression
+ - number of obs.: 1376 (original), 244 (matched)
+ - target estimand: ATT
+ - covariates: heat_wave_lag_1, heat_wave_lag_2, heat_wave_lag_3, o3_lag_1, o3_lag_2, o3_lag_3, no2, no2_lag_1, no2_lag_2, no2_lag_3, humidity_relative, month, as.factor(week), as.factor(year)</code></pre>
+</div>
+<p>The output of the matching procedure indicates us the method (1:1 nearest neighbor matching without replacement) and the distance (propensity score) we used. It also tells us how many units were matched: <code>length(matching_ps_no_calliper[[&quot;match.matrix&quot;]])</code>. We can then evaluate the covariates balance using the <code>summary()</code> function:</p>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class="co"># get summary statistics on covariates balance</span>
+<span class="va">balance_ps_no_calliper</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/summary.html">summary</a></span><span class="op">(</span><span class="va">matching_ps_no_calliper</span><span class="op">)</span> 
+</code></pre>
+</div>
+</div>
+<p>We display below summary statistics on the covariates balance for the matched data:</p>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class="va">balance_ps_no_calliper</span><span class="op">[[</span><span class="st">&quot;sum.matched&quot;</span><span class="op">]</span><span class="op">]</span>
+</code></pre>
+</div>
+<pre><code>                      Means Treated Means Control Std. Mean Diff.
+distance                0.361564407   0.297576394      0.24346121
+heat_wave_lag_1         0.434426230   0.393442623      0.08268134
+heat_wave_lag_2         0.262295082   0.286885246     -0.05590170
+heat_wave_lag_3         0.196721311   0.188524590      0.02061965
+o3_lag_1               38.225447352  36.445147115      0.12900954
+o3_lag_2               33.766854918  33.109559754      0.05251744
+o3_lag_3               30.282435148  29.696545139      0.04648474
+no2                    27.972003934  27.541508279      0.04963849
+no2_lag_1              28.603484918  28.322595328      0.02759411
+no2_lag_2              27.864232705  28.512542746     -0.06091147
+no2_lag_3              26.655856230  26.852587131     -0.02159137
+humidity_relative      64.159836066  65.536885246     -0.18663054
+monthaugust             0.278688525   0.278688525      0.00000000
+monthjuly               0.393442623   0.418032787     -0.05033670
+monthjune               0.327868852   0.303278689      0.05238227
+`as.factor(week)`22     0.000000000   0.000000000      0.00000000
+`as.factor(week)`23     0.016393443   0.008196721      0.06454972
+`as.factor(week)`24     0.073770492   0.065573770      0.03135736
+`as.factor(week)`25     0.090163934   0.114754098     -0.08585457
+`as.factor(week)`26     0.172131148   0.139344262      0.08685397
+`as.factor(week)`27     0.081967213   0.098360656     -0.05976143
+`as.factor(week)`28     0.065573770   0.049180328      0.06622662
+`as.factor(week)`29     0.106557377   0.090163934      0.05313064
+`as.factor(week)`30     0.073770492   0.106557377     -0.12542945
+`as.factor(week)`31     0.114754098   0.131147541     -0.05143445
+`as.factor(week)`32     0.106557377   0.073770492      0.10626129
+`as.factor(week)`33     0.049180328   0.049180328      0.00000000
+`as.factor(week)`34     0.024590164   0.032786885     -0.05292561
+`as.factor(week)`35     0.024590164   0.040983607     -0.10585122
+`as.factor(year)`1990   0.032786885   0.040983607     -0.04602873
+`as.factor(year)`1991   0.040983607   0.057377049     -0.08268982
+`as.factor(year)`1992   0.000000000   0.000000000      0.00000000
+`as.factor(year)`1993   0.032786885   0.032786885      0.00000000
+`as.factor(year)`1994   0.008196721   0.024590164     -0.18181818
+`as.factor(year)`1995   0.098360656   0.090163934      0.02752409
+`as.factor(year)`1996   0.016393443   0.016393443      0.00000000
+`as.factor(year)`1997   0.024590164   0.024590164      0.00000000
+`as.factor(year)`1998   0.016393443   0.024590164     -0.06454972
+`as.factor(year)`1999   0.122950820   0.139344262     -0.04992206
+`as.factor(year)`2000   0.008196721   0.008196721      0.00000000
+`as.factor(year)`2001   0.147540984   0.131147541      0.04622502
+`as.factor(year)`2002   0.106557377   0.073770492      0.10626129
+`as.factor(year)`2003   0.057377049   0.057377049      0.00000000
+`as.factor(year)`2004   0.008196721   0.000000000      0.09090909
+`as.factor(year)`2005   0.172131148   0.172131148      0.00000000
+`as.factor(year)`2006   0.040983607   0.040983607      0.00000000
+`as.factor(year)`2007   0.065573770   0.065573770      0.00000000
+                      Var. Ratio   eCDF Mean    eCDF Max
+distance               1.5869790 0.010611028 0.155737705
+heat_wave_lag_1               NA 0.040983607 0.040983607
+heat_wave_lag_2               NA 0.024590164 0.024590164
+heat_wave_lag_3               NA 0.008196721 0.008196721
+o3_lag_1               0.9447911 0.035897104 0.081967213
+o3_lag_2               0.8290242 0.034553327 0.090163934
+o3_lag_3               0.8780303 0.040457901 0.122950820
+no2                    0.7002106 0.048631593 0.139344262
+no2_lag_1              1.3077664 0.027305220 0.090163934
+no2_lag_2              1.4492764 0.056261265 0.155737705
+no2_lag_3              0.8162914 0.049248705 0.114754098
+humidity_relative      0.5723488 0.046930631 0.122950820
+monthaugust                   NA 0.000000000 0.000000000
+monthjuly                     NA 0.024590164 0.024590164
+monthjune                     NA 0.024590164 0.024590164
+`as.factor(week)`22           NA 0.000000000 0.000000000
+`as.factor(week)`23           NA 0.008196721 0.008196721
+`as.factor(week)`24           NA 0.008196721 0.008196721
+`as.factor(week)`25           NA 0.024590164 0.024590164
+`as.factor(week)`26           NA 0.032786885 0.032786885
+`as.factor(week)`27           NA 0.016393443 0.016393443
+`as.factor(week)`28           NA 0.016393443 0.016393443
+`as.factor(week)`29           NA 0.016393443 0.016393443
+`as.factor(week)`30           NA 0.032786885 0.032786885
+`as.factor(week)`31           NA 0.016393443 0.016393443
+`as.factor(week)`32           NA 0.032786885 0.032786885
+`as.factor(week)`33           NA 0.000000000 0.000000000
+`as.factor(week)`34           NA 0.008196721 0.008196721
+`as.factor(week)`35           NA 0.016393443 0.016393443
+`as.factor(year)`1990         NA 0.008196721 0.008196721
+`as.factor(year)`1991         NA 0.016393443 0.016393443
+`as.factor(year)`1992         NA 0.000000000 0.000000000
+`as.factor(year)`1993         NA 0.000000000 0.000000000
+`as.factor(year)`1994         NA 0.016393443 0.016393443
+`as.factor(year)`1995         NA 0.008196721 0.008196721
+`as.factor(year)`1996         NA 0.000000000 0.000000000
+`as.factor(year)`1997         NA 0.000000000 0.000000000
+`as.factor(year)`1998         NA 0.008196721 0.008196721
+`as.factor(year)`1999         NA 0.016393443 0.016393443
+`as.factor(year)`2000         NA 0.000000000 0.000000000
+`as.factor(year)`2001         NA 0.016393443 0.016393443
+`as.factor(year)`2002         NA 0.032786885 0.032786885
+`as.factor(year)`2003         NA 0.000000000 0.000000000
+`as.factor(year)`2004         NA 0.008196721 0.008196721
+`as.factor(year)`2005         NA 0.000000000 0.000000000
+`as.factor(year)`2006         NA 0.000000000 0.000000000
+`as.factor(year)`2007         NA 0.000000000 0.000000000
+                      Std. Pair Dist.
+distance                   0.24439206
+heat_wave_lag_1            0.64491448
+heat_wave_lag_2            0.87579329
+heat_wave_lag_3            0.76292714
+o3_lag_1                   0.84747887
+o3_lag_2                   1.09286152
+o3_lag_3                   1.08984604
+no2                        1.20946727
+no2_lag_1                  1.20168133
+no2_lag_2                  1.04213129
+no2_lag_3                  1.16303906
+humidity_relative          1.24975806
+monthaugust                0.42622951
+monthjuly                  0.88928177
+monthjune                  0.89049863
+`as.factor(week)`22        0.00000000
+`as.factor(week)`23        0.19364917
+`as.factor(week)`24        0.53307516
+`as.factor(week)`25        0.65821838
+`as.factor(week)`26        0.60797777
+`as.factor(week)`27        0.47809144
+`as.factor(week)`28        0.46358632
+`as.factor(week)`29        0.58443707
+`as.factor(week)`30        0.68986197
+`as.factor(week)`31        0.66864785
+`as.factor(week)`32        0.47817579
+`as.factor(week)`33        0.09836066
+`as.factor(week)`34        0.37047929
+`as.factor(week)`35        0.42340490
+`as.factor(year)`1990      0.41425858
+`as.factor(year)`1991      0.49613894
+`as.factor(year)`1992      0.00000000
+`as.factor(year)`1993      0.06557377
+`as.factor(year)`1994      0.36363636
+`as.factor(year)`1995      0.57800598
+`as.factor(year)`1996      0.03278689
+`as.factor(year)`1997      0.04918033
+`as.factor(year)`1998      0.32274861
+`as.factor(year)`1999      0.69890881
+`as.factor(year)`2000      0.01639344
+`as.factor(year)`2001      0.64715023
+`as.factor(year)`2002      0.47817579
+`as.factor(year)`2003      0.11475410
+`as.factor(year)`2004      0.09090909
+`as.factor(year)`2005      0.27868852
+`as.factor(year)`2006      0.08196721
+`as.factor(year)`2007      0.13114754</code></pre>
+</div>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r distill-force-highlighting-css"><code class="sourceCode r"></code></pre></div>
 <!--radix_placeholder_article_footer-->
 <!--/radix_placeholder_article_footer-->
 </div>
