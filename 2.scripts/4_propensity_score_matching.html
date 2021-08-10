@@ -1489,6 +1489,10 @@ code span.wa { color: #5e5e5e; font-style: italic; } /* Warning */
 <h3>Contents</h3>
 <ul>
 <li><a href="#required-packages">Required Packages</a></li>
+<li><a href="#propensity-score-matching">Propensity Score Matching</a>
+<ul>
+<li><a href="#matching-procedure">Matching Procedure</a></li>
+</ul></li>
 </ul>
 </nav>
 </div>
@@ -1496,7 +1500,7 @@ code span.wa { color: #5e5e5e; font-style: italic; } /* Warning */
 body {
 text-align: justify}
 </style>
-<p>In this document, we provide all steps and R codes required to estimate the effect of heat waves of the number of years of life lost (YoLL) using propensity score matching. [add description]. <strong>Should you have any questions, need help to reproduce the analysis or find coding errors, please do not hesitate to contact us at <a href="mailto:leo.zabrocki@psemail.eu" class="email">leo.zabrocki@psemail.eu</a></strong></p>
+<p>In this document, we provide all steps and R codes required to estimate the effect of heat waves of the number of years of life lost (YoLL) using propensity score matching. The implementation is done with the fantastic package <a href="https://kosukeimai.github.io/MatchIt/index.html">MatchIt</a>: do not hesitate to explore its very well-made documentation. <strong>Should you have any questions, need help to reproduce the analysis or find coding errors, please do not hesitate to contact us at <a href="mailto:leo.zabrocki@psemail.eu" class="email">leo.zabrocki@psemail.eu</a></strong></p>
 <h1 id="required-packages">Required Packages</h1>
 <p>To reproduce exactly the <code>4_propensity_score_matching.html</code> document, we first need to have installed:</p>
 <ul>
@@ -1513,6 +1517,7 @@ text-align: justify}
 <span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://here.r-lib.org/">here</a></span><span class="op">)</span> <span class="co"># for files paths organization</span>
 <span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://tidyverse.tidyverse.org">tidyverse</a></span><span class="op">)</span> <span class="co"># for data manipulation and visualization</span>
 <span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://broom.tidymodels.org/">broom</a></span><span class="op">)</span> <span class="co"># for cleaning regression outputs</span>
+<span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://kosukeimai.github.io/MatchIt/">MatchIt</a></span><span class="op">)</span> <span class="co"># for matching procedures</span>
 <span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="http://www.rforge.net/Cairo/">Cairo</a></span><span class="op">)</span> <span class="co"># for printing custom police of graphs</span>
 <span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/rstudio/DT">DT</a></span><span class="op">)</span> <span class="co"># for displaying the data as tables</span>
 </code></pre>
@@ -1533,6 +1538,14 @@ text-align: justify}
 </code></pre>
 </div>
 </div>
+<h1 id="propensity-score-matching">Propensity Score Matching</h1>
+<p>We implement below a propensity score matching procedure where (i) we first predict the probability of the occurence of an heat wave for each day using a simple logistic regression model and (ii) each day with an heat wave is then matched to the most similar day without heat wave. Specifically, we vary the matching distance to see how covariates balance change:</p>
+<ol type="1">
+<li>We first match each treated unit to its closest control unit.</li>
+<li>We then set the maximum distance (i.e., the caliper) allowed between a treated and control unit to be inferior 1 propensity score standard deviation.</li>
+<li>We finally set the maximum distance (i.e., the caliper) allowed between a treated and control unit to be inferior 0.5 propensity score standard deviation.</li>
+</ol>
+<h3 id="matching-procedure">Matching Procedure</h3>
 <div class="sourceCode" id="cb1"><pre class="sourceCode r distill-force-highlighting-css"><code class="sourceCode r"></code></pre></div>
 <!--radix_placeholder_article_footer-->
 <!--/radix_placeholder_article_footer-->

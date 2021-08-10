@@ -33,7 +33,7 @@ body {
 text-align: justify}
 </style>
 
-In this document, we provide all steps and R codes required to estimate the effect of heat waves of the number of years of life lost (YoLL) using propensity score matching. [add description]. **Should you have any questions, need help to reproduce the analysis or find coding errors, please do not hesitate to contact us at leo.zabrocki@psemail.eu**
+In this document, we provide all steps and R codes required to estimate the effect of heat waves of the number of years of life lost (YoLL) using propensity score matching. The implementation is done with the fantastic package [MatchIt](https://kosukeimai.github.io/MatchIt/index.html): do not hesitate to explore its very well-made documentation. **Should you have any questions, need help to reproduce the analysis or find coding errors, please do not hesitate to contact us at leo.zabrocki@psemail.eu**
 
 # Required Packages
 
@@ -52,6 +52,7 @@ library(knitr) # for creating the R Markdown document
 library(here) # for files paths organization
 library(tidyverse) # for data manipulation and visualization
 library(broom) # for cleaning regression outputs
+library(MatchIt) # for matching procedures
 library(Cairo) # for printing custom police of graphs
 library(DT) # for displaying the data as tables
 ```
@@ -73,31 +74,11 @@ my_orange <- "#fb8500"
 
 # Propensity Score Matching
 
-We implement below a propensity score matching procedure where each day with heat wave is matched to the closest 
+We implement below a propensity score matching procedure where (i) we first predict the probability of the occurence of an heat wave for each day using a simple logistic regression model and (ii) each day with an heat wave is then matched to the most similar day without heat wave. Specifically, we vary the matching distance to see how covariates balance change:
+
+1. We first match each treated unit to its closest control unit.
+2. We then set the maximum distance (i.e., the caliper) allowed between a treated and control unit to be inferior 1 propensity score standard deviation. 
+3. We finally set the maximum distance (i.e., the caliper) allowed between a treated and control unit to be inferior 0.5 propensity score standard deviation. 
 
 ### Matching Procedure
-
-```{r, echo = TRUE}
-
- matching_results <- matchit(
-    treatment ~ previous_employment + as.factor(age) + as.factor(education) + minority,
-    caliper = caliper_value,
-    data = data
-  )
-  
-  data_matched <- match.data(matching_results)
-  
-  n_matched <- nrow(data_matched)
-  
-  model_fit <- lm(
-    y_obs ~ treatment + previous_employment + age + education + minority,
-    data = data_matched,
-    weights = weights
-  )
-  
-  ps_att <- broom::tidy(coeftest(model_fit, vcov. = vcovCL, cluster = ~ subclass),
-                conf.int = TRUE) %>%
-    filter(term == "treatment") %>%
-    select(term, estimate, p.value, conf.low, conf.high)
-```
 
