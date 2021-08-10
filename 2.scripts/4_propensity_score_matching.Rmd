@@ -54,6 +54,8 @@ library(tidyverse) # for data manipulation and visualization
 library(broom) # for cleaning regression outputs
 library(MatchIt) # for matching procedures
 library(cobalt) # for assessing covariates balance
+library(lmtest) # for modifying regression standard errors
+library(sandwich) # for robust and cluster robust standard errors
 library(Cairo) # for printing custom police of graphs
 library(DT) # for displaying the data as tables
 ```
@@ -100,7 +102,7 @@ Once treated and control units are matched, we assess whether covariates has imp
 
 We finally estimate the treatment effect.
 
-### Matching Procedure and C
+### Matching Procedure and Covariates Balance Improvement
 
 We first match each treated unit to its closest control unit without any caliper using the `matchit()` function:
 
@@ -257,13 +259,96 @@ love.plot(
   var.names = cov_labels,
   sample.names = c("Initial Data", "Without Caliper", "With Caliper"),
   shapes = c("circle", "triangle", "square"),
-  colors = c(my_orange, my_blue, "#06d6a0")
+  colors = c(my_orange, my_blue, "#81b29a")
 ) +
   xlab("Absolute Standardized mean Differences") +
   theme_tufte()
 ```
 
-On this graph, it is not clear to see whether 
+On this graph, it is not clear to see whether covariates balance has really increased.
+
+### Analysis of Matched Data
+
+We now move to the analysis of the matched datasets using a simple regression model where we first regression the YoLL on the treatment indicator. We start with the matched data resulting from the propensity score without caliper:
+
+```{R, echo=TRUE, layout="l-body-outset", fig.width = 8, fig.height = 8, dev = "CairoPNG"}
+# we retrieve the matched data
+data_ps_no_calliper <- match.data(matching_ps_no_calliper)
+
+# we fit the regression model
+model_ps_no_calliper <- lm(y_obs ~ heat_wave,
+                               data = data_ps_no_calliper,
+                               weights = weights)
+
+# retrieve the estimate and 95% ci
+results_ps_no_calliper <- tidy(coeftest(
+  model_ps_no_calliper,
+  vcov. = vcovCL,
+  cluster = ~ subclass
+),
+conf.int = TRUE) %>%
+  filter(term == "heat_wave") %>%
+  select(term, estimate, conf.low, conf.high) %>%
+  mutate_at(vars(estimate:conf.high), ~ round(., 0))
+
+# display results
+results_ps_no_calliper %>%
+  rename(
+    "Term" = term,
+    "Estimate" = estimate,
+    "95% CI Lower Bound" = conf.low,
+    "95% CI Upper Bound" = conf.high
+  ) %>%
+  kable(., align = c("l", "c", "c", "c"))
+```
+
+We find that the average effect on the treated is equal to +`r results_ps_no_calliper$estimate` years of life lost. The 95% confidence interval is consistent with effects ranging from +`r results_ps_no_calliper$conf.low` up to +`r results_ps_no_calliper$conf.high`. The estimate of the ATT is still far from the the true effect of +230 YoLL. 
+
+We also estimate the treatment effect for the matched dataset resulting from the matching procedure with a caliper. It is very important to note that the target causal estimand is not anymore the the average treatment on the treated as not all treated units could be matched to similar control units. To know the true causal effect for the match data, we compute the mean difference in potential outcomes:
+
+```{R, echo=TRUE}
+# we retrieve the matched data
+data_ps_w_calliper <- match.data(matching_ps_w_calliper)
+
+# compute the true effect for the data
+true_att_ps__w_calliper <-
+  round(mean(data_ps_w_calliper$y_1[data_ps_w_calliper$heat_wave == 1] - data_ps_w_calliper$y_0[data_ps_w_calliper$heat_wave == 0]), 0)
+```
+
+The true effect for this match data is equal to +`r true_att_ps__w_calliper` YoLL, which is different for the true effect on **all** treated units. If we estimate this effect with a simple linear regression model, we get:
+
+
+
+```{R, echo=TRUE}
+# we fit the regression model
+model_ps_w_calliper <- lm(y_obs ~ heat_wave,
+                               data = data_ps_w_calliper,
+                               weights = weights)
+
+# retrieve the estimate and 95% ci
+results_ps_w_calliper <- tidy(coeftest(
+  model_ps_w_calliper,
+  vcov. = vcovCL,
+  cluster = ~ subclass
+),
+conf.int = TRUE) %>%
+  filter(term == "heat_wave") %>%
+  select(term, estimate, conf.low, conf.high) %>%
+  mutate_at(vars(estimate:conf.high), ~ round(., 0))
+
+# display results
+results_ps_w_calliper %>%
+  rename(
+    "Term" = term,
+    "Estimate" = estimate,
+    "95% CI Lower Bound" = conf.low,
+    "95% CI Upper Bound" = conf.high
+  ) %>%
+  kable(., align = c("l", "c", "c", "c"))
+```
+
+The estimated is exactly equal to the true effect of +`r true_att_ps__w_calliper`. The 95% confidence interval is consistent with effects ranging from 
+
 
 
 
