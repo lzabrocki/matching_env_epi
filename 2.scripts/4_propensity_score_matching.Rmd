@@ -1,0 +1,103 @@
+---
+title: "Propensity Score Matching"
+description: |
+  Detailled Script.
+author:
+  - name: Tarik Benmarhnia 
+    url: https://profiles.ucsd.edu/tarik.benmarhnia
+    affiliation: University of California San Diego
+    affiliation_url: https://profiles.ucsd.edu/tarik.benmarhnia
+  - name: Marie-Abèle Bind 
+    url: https://scholar.google.com/citations?user=gyPCRcEAAAAJ&hl=fr
+    affiliation: 	Massachusetts General Hospital
+    affiliation_url: https://scholar.google.com/citations?user=gyPCRcEAAAAJ&hl=fr
+  - name: Léo Zabrocki 
+    url: https://www.parisschoolofeconomics.eu/en/
+    affiliation: Paris School of Economics
+    affiliation_url: https://www.parisschoolofeconomics.eu/en/
+date: "`r Sys.Date()`"
+output: 
+    distill::distill_article:
+      toc: true
+      toc_depth: 3
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = FALSE, warning = FALSE)
+```
+
+<style>
+body {
+text-align: justify}
+</style>
+
+In this document, we provide all steps and R codes required to estimate the effect of heat waves of the number of years of life lost (YoLL) using propensity score matching. [add description]. **Should you have any questions, need help to reproduce the analysis or find coding errors, please do not hesitate to contact us at leo.zabrocki@psemail.eu**
+
+# Required Packages
+
+To reproduce exactly the `4_propensity_score_matching.html` document, we first need to have installed:
+
+* the [R](https://www.r-project.org/) programming language 
+* [RStudio](https://rstudio.com/), an integrated development environment for R, which will allow you to knit the `4_propensity_score_matching.Rmd` file and interact with the R code chunks
+* the [R Markdown](https://rmarkdown.rstudio.com/) package
+* and the [Distill](https://rstudio.github.io/distill/) package which provides the template for this document. 
+
+Once everything is set up, we load the following packages:
+
+```{r, echo = TRUE}
+# load required packages
+library(knitr) # for creating the R Markdown document
+library(here) # for files paths organization
+library(tidyverse) # for data manipulation and visualization
+library(broom) # for cleaning regression outputs
+library(Cairo) # for printing custom police of graphs
+library(DT) # for displaying the data as tables
+```
+
+We finally load our custom `ggplot2` theme for graphs:
+
+```{r, echo = TRUE}
+# load ggplot custom theme
+source(here::here(
+  "2.scripts",
+  "functions",
+  "script_theme_tufte.R"
+))
+# define nice colors
+my_blue <- "#0081a7"
+my_orange <- "#fb8500"
+```
+
+
+# Propensity Score Matching
+
+We implement below a propensity score matching procedure where each day with heat wave is matched to the closest 
+
+### Matching Procedure
+
+```{r, echo = TRUE}
+
+ matching_results <- matchit(
+    treatment ~ previous_employment + as.factor(age) + as.factor(education) + minority,
+    caliper = caliper_value,
+    data = data
+  )
+  
+  data_matched <- match.data(matching_results)
+  
+  n_matched <- nrow(data_matched)
+  
+  model_fit <- lm(
+    y_obs ~ treatment + previous_employment + age + education + minority,
+    data = data_matched,
+    weights = weights
+  )
+  
+  ps_att <- broom::tidy(coeftest(model_fit, vcov. = vcovCL, cluster = ~ subclass),
+                conf.int = TRUE) %>%
+    filter(term == "treatment") %>%
+    select(term, estimate, p.value, conf.low, conf.high)
+```
+

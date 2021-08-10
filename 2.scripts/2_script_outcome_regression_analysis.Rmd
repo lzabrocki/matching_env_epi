@@ -1,0 +1,173 @@
+---
+title: "Outcome Regression Analysis"
+description: |
+  Detailled Script.
+author:
+  - name: Tarik Benmarhnia 
+    url: https://profiles.ucsd.edu/tarik.benmarhnia
+    affiliation: University of California San Diego
+    affiliation_url: https://profiles.ucsd.edu/tarik.benmarhnia
+  - name: Marie-Abèle Bind 
+    url: https://scholar.google.com/citations?user=gyPCRcEAAAAJ&hl=fr
+    affiliation: 	Massachusetts General Hospital
+    affiliation_url: https://scholar.google.com/citations?user=gyPCRcEAAAAJ&hl=fr
+  - name: Léo Zabrocki 
+    url: https://www.parisschoolofeconomics.eu/en/
+    affiliation: Paris School of Economics
+    affiliation_url: https://www.parisschoolofeconomics.eu/en/
+date: "`r Sys.Date()`"
+output: 
+    distill::distill_article:
+      toc: true
+      toc_depth: 3
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = FALSE, warning = FALSE)
+```
+
+<style>
+body {
+text-align: justify}
+</style>
+
+In this document, we provide all steps and R codes required to analyse the effect of heat waves on the number of years of life lost (YoLL) using an outcome regression approach. This is often the standard procedure followed by researchers in environmental epidemiology: covariates balance is not discussed and confounding variables are adjusted for with a multivariate regression model. **Should you have any questions, need help to reproduce the analysis or find coding errors, please do not hesitate to contact us at leo.zabrocki@psemail.eu**
+
+# Required Packages
+
+To reproduce exactly the `2_script_outcome_regression_analysis.html` document, we first need to have installed:
+
+* the [R](https://www.r-project.org/) programming language 
+* [RStudio](https://rstudio.com/), an integrated development environment for R, which will allow you to knit the `2_script_outcome_regression_analysis.Rmd` file and interact with the R code chunks
+* the [R Markdown](https://rmarkdown.rstudio.com/) package
+* and the [Distill](https://rstudio.github.io/distill/) package which provides the template for this document. 
+
+Once everything is set up, we load the following packages:
+
+```{r, echo = TRUE}
+# load required packages
+library(knitr) # for creating the R Markdown document
+library(here) # for files paths organization
+library(tidyverse) # for data manipulation and visualization
+library(broom) # for cleaning regression outputs
+library(Cairo) # for printing custom police of graphs
+library(DT) # for displaying the data as tables
+```
+
+We finally load our custom `ggplot2` theme for graphs:
+
+```{r, echo = TRUE}
+# load ggplot custom theme
+source(here::here(
+  "2.scripts",
+  "functions",
+  "script_theme_tufte.R"
+))
+# define nice colors
+my_blue <- "#0081a7"
+my_orange <- "#fb8500"
+```
+
+# Regression Analysis
+
+We load the simulated environmental data:
+
+```{r, echo = TRUE}
+# load the data
+data <-
+  readRDS(here::here("1.data", "simulated_environmental_data.rds"))
+```
+
+### Graphical Difference in Yoll
+
+To explore whether heat waves lead to an increase in YoLL, we could first compare the distribution of the outcome between days with heat waves and days without heat waves:
+
+```{R, echo=TRUE, fig.align = "center", dev = "CairoPNG"}
+data %>%
+  # recode heat_wave variable
+  mutate(heat_wave = ifelse(heat_wave == 1, "Days with Heat Wave", "Days without Heat Wave")) %>%
+  # make a boxplots graph
+  ggplot(., aes(
+    x = fct_rev(heat_wave),
+    y = y_obs,
+    color = fct_rev(heat_wave)
+  )) +
+  geom_boxplot() +
+  scale_color_manual(values = c(my_blue, my_orange)) +
+  scale_y_continuous(
+    breaks = scales::pretty_breaks(n = 8),
+    labels = function(x)
+      format(x, big.mark = " ", scientific = FALSE)
+  ) +
+  xlab("Heat Wave Indicator") + ylab("Number of Years of Life Lost") +
+  ggtitle("Number of Years of Life Lost According to Heat Wave Status") +
+  theme_tufte() +
+  guides(color = FALSE)
+```
+
+On this graph, we can see that the median of the number of years of life lost for days with heat waves is higher by about 400 YoLL than the median of days without heat waves. 
+
+### Crude Regression Analysis
+
+We then regress the observed number of years of life lost (`y_obs`) on the indicator for the occurrence of a heat wave (`heat_wave`) to get a crude estimate of the difference:
+
+
+$\text{YoLL}_{t} = \alpha + \beta\text{HW}_{t} + \epsilon_{t}$
+
+where $t$ is the time index, $\beta$ is the coefficient of interest and $\epsilon$ the error term. We implement this model in R with the following code:
+
+```{r, echo = TRUE}
+# run the model and clean ouput
+output_crude_regression <- data %>%
+  lm(y_obs ~ heat_wave, data = .) %>%
+  tidy(., conf.int = TRUE)
+
+# display output
+output_crude_regression %>%
+  filter(term == "heat_wave") %>%
+  select(term, estimate, conf.low, conf.high) %>%
+  mutate_at(vars(estimate:conf.high), ~ round(., 0)) %>%
+  rename(
+    "Term" = term,
+    "Estimate" = estimate,
+    "95% CI Lower Bound" = conf.low,
+    "95% CI Upper Bound" = conf.high
+  ) %>%
+  kable(., align = c("l", "c", "c", "c"))
+```
+
+The estimate for the effect of heat waves on Yoll is equal to + `r round(output_crude_regression$estimate[2], 0)` and the 95% confidence interval is consistent with effects ranging from `r round(output_crude_regression$conf.low[2], 0)` up to `r round(output_crude_regression$conf.high[2], 0)`. However, the estimate is far from the true effect of +230 Yoll and is likely biased by confounders.
+
+
+### Regression Analysis with Adjustment for Confounders
+
+We finally run a regression where we adjust for potential confounders such as calendar variables (i.e., the year and the month), weather parameters (i.e., the relative humidity) and air pollutants (i.e., NO$_{2}$ and O$_{3}$). We also include variables such as the day of the week if we believe it is predictive of the outcome. This regression model can be written such that:
+
+$\text{YoLL}_{t} = \alpha + \beta\text{HW}_{t} + \textbf{WP}_{t}\phi + \textbf{C}_{t}\gamma + \epsilon_{t}$
+
+where $WP$ is the vector of weather and air pollutants variables and $C_{t}$ the vector of calendar indicators. We implement this model in R with the following code:
+
+```{r, echo = TRUE}
+# run the model and clean ouput
+output_adjusted_regression <- data %>%
+  lm(y_obs ~ heat_wave + humidity_relative + o3 + no2 + weekday + month + as.factor(year),
+     data = .) %>%
+  tidy(., conf.int = TRUE)
+
+# display output
+output_adjusted_regression %>%
+  filter(term == "heat_wave") %>%
+  select(term, estimate, conf.low, conf.high) %>%
+  mutate_at(vars(estimate:conf.high), ~ round(., 0)) %>%
+  rename(
+    "Term" = term,
+    "Estimate" = estimate,
+    "95% CI Lower Bound" = conf.low,
+    "95% CI Upper Bound" = conf.high
+  ) %>%
+  kable(., align = c("l", "c", "c", "c"))
+```
+
+The estimate for the effect of heat waves on Yoll is equal to + `r round(output_adjusted_regression$estimate[2], 0)` and the 95% confidence interval is consistent with effects ranging from `r round(output_adjusted_regression$conf.low[2], 0)` up to `r round(output_adjusted_regression$conf.high[2], 0)`. The estimated effect is closer to the true effect of +230 Yoll but is still biased. This regression model may be too simple---we could also include lags of the variables and use different functional forms if we think they could reduce omitted variable bias.
+
+

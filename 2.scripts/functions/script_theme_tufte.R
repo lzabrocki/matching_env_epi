@@ -17,7 +17,7 @@ theme_tufte <- function() {
       plot.title = element_text(
         hjust = 0,
         family = font,
-        size = 18,
+        size = 14,
         face = "bold",
         margin = ggplot2::margin(b = 0.2, unit = "cm")
       ),

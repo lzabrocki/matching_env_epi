@@ -1,0 +1,380 @@
+---
+title: "Assessing Covariates Balance"
+description: |
+  Detailled Script.
+author:
+  - name: Tarik Benmarhnia 
+    url: https://profiles.ucsd.edu/tarik.benmarhnia
+    affiliation: University of California San Diego
+    affiliation_url: https://profiles.ucsd.edu/tarik.benmarhnia
+  - name: Marie-Abèle Bind 
+    url: https://scholar.google.com/citations?user=gyPCRcEAAAAJ&hl=fr
+    affiliation: 	Massachusetts General Hospital
+    affiliation_url: https://scholar.google.com/citations?user=gyPCRcEAAAAJ&hl=fr
+  - name: Léo Zabrocki 
+    url: https://www.parisschoolofeconomics.eu/en/
+    affiliation: Paris School of Economics
+    affiliation_url: https://www.parisschoolofeconomics.eu/en/
+date: "`r Sys.Date()`"
+output: 
+    distill::distill_article:
+      toc: true
+      toc_depth: 3
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = FALSE, warning = FALSE)
+```
+
+<style>
+body {
+text-align: justify}
+</style>
+
+In this document, we provide all steps and R codes required to evaluate if days with heat wave are similar to days without heat wave. [add description]. **Should you have any questions, need help to reproduce the analysis or find coding errors, please do not hesitate to contact us at leo.zabrocki@psemail.eu**
+
+# Required Packages
+
+To reproduce exactly the `3_script_eda_covariates_balance.html` document, we first need to have installed:
+
+* the [R](https://www.r-project.org/) programming language 
+* [RStudio](https://rstudio.com/), an integrated development environment for R, which will allow you to knit the `3_script_eda_covariates_balance.Rmd` file and interact with the R code chunks
+* the [R Markdown](https://rmarkdown.rstudio.com/) package
+* and the [Distill](https://rstudio.github.io/distill/) package which provides the template for this document. 
+
+Once everything is set up, we load the following packages:
+
+```{r, echo = TRUE}
+# load required packages
+library(knitr) # for creating the R Markdown document
+library(here) # for files paths organization
+library(tidyverse) # for data manipulation and visualization
+library(broom) # for cleaning regression outputs
+library(Cairo) # for printing custom police of graphs
+library(DT) # for displaying the data as tables
+```
+
+We finally load our custom `ggplot2` theme for graphs:
+
+```{r, echo = TRUE}
+# load ggplot custom theme
+source(here::here(
+  "2.scripts",
+  "functions",
+  "script_theme_tufte.R"
+))
+# define nice colors
+my_blue <- "#0081a7"
+my_orange <- "#fb8500"
+```
+
+# Checking Covariates Balance
+
+We load the simulated environmental data:
+
+```{r, echo = TRUE}
+# load the data
+data <-
+  readRDS(here::here("1.data", "simulated_environmental_data.rds")) %>%
+# we recode the heat_wave variable
+  mutate(heat_wave = ifelse(heat_wave == 1, "Days with Heat Wave", "Days without Heat Wave"))
+```
+
+### Continuous Covariates
+
+We first explore whether continuous covariates (i.e., the relative humidity, O$_{3}$ and NO$_{2}$ concentrations) and their lags (up to the third previous day) are balanced. We plot below the density distribution of each covariate by treatment group:
+
+```{R, echo=TRUE, layout="l-body-outset", fig.width = 10, fig.height = 6, dev = "CairoPNG"}
+data %>%
+  # pivot covariates to long format
+  pivot_longer(
+    cols = c(humidity_relative, o3:no2_lag_3),
+    names_to = "covariate",
+    values_to = "value"
+  ) %>%
+  # change covariate names
+  mutate(
+    covariate = case_when(
+      covariate == "humidity_relative" ~ "Relative Humidity (%)",
+      covariate == "o3" ~ "Ozone in t (µg/m³)",
+      covariate == "o3_lag_1" ~ "O3 in t-1 (µg/m³)",
+      covariate == "o3_lag_2" ~ "O3 in t-2 (µg/m³)",
+      covariate == "o3_lag_3" ~ "O3 in t-3 (µg/m³)",
+      covariate == "no2" ~ "NO2 in t (µg/m³)",
+      covariate == "no2_lag_1" ~ "NO2 in t-1 (µg/m³)",
+      covariate == "no2_lag_2" ~ "NO2 in t-2 (µg/m³)",
+      covariate == "no2_lag_3" ~ "NO2 in t-3 (µg/m³)"
+    )
+  ) %>%
+  # reorder covariates
+  mutate(
+    covariate = fct_relevel(
+      covariate,
+      "Relative Humidity (%)",
+      "Ozone in t (µg/m³)",
+      "O3 in t-1 (µg/m³)",
+      "O3 in t-2 (µg/m³)",
+      "O3 in t-3 (µg/m³)",
+      "NO2 in t (µg/m³)",
+      "NO2 in t-1 (µg/m³)",
+      "NO2 in t-2 (µg/m³)",
+      "NO2 in t-3 (µg/m³)"
+    )
+  ) %>%
+  # make density graph
+  ggplot(., aes(x = value,
+                color = fct_rev(heat_wave))) +
+  geom_density() +
+  scale_color_manual(name = "Group:", values = c(my_blue, my_orange)) +
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 8)) +
+  facet_wrap( ~ covariate, scales = "free") +
+  xlab("Covariate Value") + ylab("") +
+  ggtitle("Density Distribution of Continuous Covariates by Treatment") +
+  theme_tufte() +
+  theme(axis.ticks.y = element_blank(),
+        axis.text.y = element_blank())
+```
+
+On this graph, we can see that the relative humidity and O$_{3}$ and its lags are imbalanced across the treatment and control groups. As an alternative to density distributions, we can summarize the imbalance by computing, for each covariate, the absolute standardized mean difference between treatment and control groups. The absolute standardized mean difference of a covariate is just the absolute value of the difference in means between treated and control units divided by the standard deviation of the treatment group. We can simply compute and plot this metric using the following code:
+
+```{R, echo=TRUE, layout="l-body-outset", fig.width = 10, fig.height = 3, dev = "CairoPNG"}
+# reshape the data into long
+data_continuous_cov <- data %>%
+  select(heat_wave, humidity_relative, o3:no2_lag_3) %>%
+  pivot_longer(cols = -c(heat_wave),
+               names_to = "variable",
+               values_to = "value") %>%
+  mutate(
+    covariate_name = NA %>%
+      ifelse(str_detect(variable, "o3"), "O3", .) %>%
+      ifelse(
+        str_detect(variable, "humidity_relative"),
+        "Relative Humidity",
+        .
+      ) %>%
+      ifelse(str_detect(variable, "no2"), "NO2", .)
+  ) %>%
+  mutate(
+    time = "Lag 0" %>%
+      ifelse(str_detect(variable, "lag_1"), "Lag 1", .) %>%
+      ifelse(str_detect(variable, "lag_2"), "Lag 2", .) %>%
+      ifelse(str_detect(variable, "lag_3"), "Lag 3", .)
+  ) %>%
+  mutate(time = fct_relevel(time, "Lag 3", "Lag 2", "Lag 1", "Lag 0")) %>%
+  select(heat_wave, covariate_name, time, value)
+
+# compute absolute difference in  means
+data_abs_difference <- data_continuous_cov %>%
+  group_by(covariate_name, time, heat_wave) %>%
+  summarise(mean_value = mean(value, na.rm = TRUE)) %>%
+  summarise(abs_difference = abs(mean_value[2] - mean_value[1]))
+
+# compute treatment covariates standard deviation
+data_sd <-  data_continuous_cov %>%
+  filter(heat_wave == "Days with Heat Wave") %>%
+  group_by(covariate_name, time, heat_wave) %>%
+  summarise(sd_treatment = sd(value, na.rm = TRUE)) %>%
+  ungroup() %>%
+  select(covariate_name, time, sd_treatment)
+
+# compute standardized differences
+data_standardized_difference <-
+  left_join(data_abs_difference, data_sd, by = c("covariate_name", "time")) %>%
+  mutate(standardized_difference = abs_difference / sd_treatment) %>%
+  select(-c(abs_difference, sd_treatment))
+
+# make the graph
+ggplot(data_standardized_difference, aes(y = covariate_name, x = standardized_difference)) +
+  geom_vline(xintercept = 0, size = 0.3) +
+  geom_vline(xintercept = 0.1, color = my_orange) +
+  geom_point(size = 2, color = my_blue) +
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 8)) +
+  facet_wrap(~ fct_rev(time), nrow = 1) +
+  xlab("Standardized Mean Differences") +
+  ylab("") + 
+  theme_tufte()
+```
+
+On this graph, the black line represents standardized mean differences equal to 0 and the orange line is the 0.1 threshold often used in the matching literature to assess balance. Standardized mean differences below this threshold would indicate good balance. Here, for all covariates and lags, the treatment and control groups are imbalanced.
+
+### Categorical Covariates
+
+For calendar variables such as the day of the week, the month and the year, we evaluate balance by plotting the proportions of days with and without heat wave. If heat wave were randomly distributed, there should not be difference in the distribution of the proportions for the two groups. We first plot the distribution of proportions for the day of the week:
+
+```{R, echo=TRUE, layout="l-body-outset", fig.width=10, fig.height=5, dev = "CairoPNG"}
+# compute the proportions of observations belonging to each wday by treatment status
+data_weekday <- data %>%
+  select(weekday, heat_wave) %>%
+  mutate(weekday = str_to_title(weekday)) %>%
+  pivot_longer(., -heat_wave) %>%
+  group_by(name, heat_wave, value) %>%
+  summarise(n = n()) %>%
+  mutate(proportion = round(n / sum(n) * 100, 0)) %>%
+  ungroup() %>%
+  mutate(value = fct_relevel(value,
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+    "Sunday"
+  ))
+
+# make a dots graph
+ggplot(data_weekday,
+         aes(
+           x = as.factor(value),
+           y = proportion,
+           colour = heat_wave,
+           group = heat_wave
+         )) +
+  geom_line(size = 0.5, linetype = "dotted") +
+  geom_point(size = 2) +
+  scale_colour_manual(values = c(my_blue, my_orange),
+                      guide = guide_legend(reverse = FALSE)) +
+  ggtitle("Proportion of Days with and without Heat Waves by Day of the Week") +
+  ylab("Proportion (%)") +
+  xlab("Day of the Week") +
+  labs(colour = "Group:") +
+  theme_tufte() +
+  theme(
+    legend.position = "top",
+    legend.justification = "left",
+    legend.direction = "horizontal"
+  )
+```
+
+On this graph, we can see that there are some differences (in percentage points) in the distribution of units between the two groups across days of the week. The differences are however small---at most 4 percentages points. We then plot the same graph but for the month indicator:
+
+```{R, echo=TRUE, layout="l-body-outset", fig.width=8, fig.height=4, dev = "CairoPNG"}
+# compute the proportions of observations belonging to each month by treatment status
+data_month <- data %>%
+  select(month, heat_wave) %>%
+  mutate(month = str_to_title(month)) %>%
+  mutate(
+    month = fct_relevel(month,
+        "June",
+        "July",
+        "August")
+  ) %>%
+  pivot_longer(.,-heat_wave) %>%
+  group_by(name, heat_wave, value) %>%
+  summarise(n = n()) %>%
+  mutate(proportion = round(n / sum(n) * 100, 0)) %>%
+  ungroup()
+
+# make a dots graph
+ggplot(data_month,
+         aes(
+           x = as.factor(value),
+           y = proportion,
+           colour = heat_wave,
+           group = heat_wave
+         )) +
+  geom_line(size = 0.5, linetype = "dotted") +
+  geom_point(size = 2) +
+  scale_colour_manual(values = c(my_blue, my_orange),
+                      guide = guide_legend(reverse = FALSE)) +
+  ggtitle("Proportion of Days with and without Heat Waves by Month") +
+  ylab("Proportion (%)") +
+  xlab("Month") +
+  labs(colour = "Group:") +
+  theme_tufte() 
+```
+
+We also plot the same graph but for the year variable:
+
+```{R, echo=TRUE, layout="l-body-outset", fig.width=10, fig.height=5, dev = "CairoPNG"}
+# compute the proportions of observations belonging to each year by treatment status
+data_year <- data %>%
+  select(year, heat_wave) %>%
+  pivot_longer(.,-heat_wave) %>%
+  group_by(name, heat_wave, value) %>%
+  summarise(n = n()) %>%
+  mutate(proportion = round(n / sum(n) * 100, 0)) %>%
+  ungroup()
+
+# make dots plot
+ggplot(data_year,
+         aes(
+           x = as.factor(value),
+           y = proportion,
+           colour = heat_wave,
+           group = heat_wave
+         )) +
+  geom_line(size = 0.5, linetype = "dotted") +
+  geom_point(size = 2) +
+  scale_colour_manual(values = c(my_blue, my_orange),
+                      guide = guide_legend(reverse = FALSE)) +
+  ggtitle("Proportion of Days with and without Heat Waves by Year") +
+  ylab("Proportion (%)") +
+  xlab("Year") +
+  labs(colour = "Group:") +
+  theme_tufte()
+```
+
+Not surprisingly, we can see on this graph that there were more heat waves on specific years.
+
+To summarize the imbalance for calendar variables, we can finally compute the difference of proportion (in percentage points) between days with and without heat waves. We compute these differences with the following code:
+
+```{R, echo=TRUE}
+# compute differences in proportion
+data_calendar_difference <- data %>%
+  select(heat_wave, weekday, month, year) %>%
+  mutate_all( ~ as.character(.)) %>%
+  pivot_longer(cols = -c(heat_wave),
+               names_to = "variable",
+               values_to = "value") %>%
+  mutate(value = str_to_title(value)) %>%
+  # group by is_treated, variable and values
+  group_by(heat_wave, variable, value) %>%
+  # compute the number of observations
+  summarise(n = n()) %>%
+  # compute the proportion
+  mutate(freq = round(n / sum(n) * 100, 0)) %>%
+  ungroup() %>%
+  mutate(
+    calendar_variable = NA %>%
+      ifelse(str_detect(variable, "weekday"), "Day of the Week", .) %>%
+      ifelse(str_detect(variable, "month"), "Month", .) %>%
+      ifelse(str_detect(variable, "year"), "Year", .)
+  ) %>%
+  select(heat_wave, calendar_variable, value, freq) %>%
+  pivot_wider(names_from = heat_wave, values_from = freq) %>%
+  mutate(abs_difference = abs(`Days with Heat Wave` - `Days without Heat Wave`)) %>%
+  # reoder the values of variable for the graph
+  mutate(
+    value = fct_relevel(
+      value,
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+      "Sunday",
+      "June",
+      "July",
+      "August"
+    )
+  )
+```
+
+We plot below the differences in proportion for each calendar indicator:
+
+```{R, echo=TRUE, layout="l-body-outset", fig.width=15, fig.height=5, dev = "CairoPNG"}
+# plot the differences in proportion for each calendar indicator
+ggplot(data_calendar_difference, aes(x = value, y = abs_difference)) +
+  geom_point(colour = my_blue) +
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 8)) +
+  facet_wrap(~ calendar_variable, scales = "free_x") +
+  ggtitle(
+    "Absolute Difference in Calendar Indicators Distribution Between Days with and without Heat Waves"
+  ) +
+  xlab("Calendar Indicator") + ylab("Absolute Difference (Percentage Points)") +
+  theme_tufte()
+```
+
