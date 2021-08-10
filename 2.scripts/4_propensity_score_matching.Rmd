@@ -100,7 +100,7 @@ Once treated and control units are matched, we assess whether covariates has imp
 
 We finally estimate the treatment effect.
 
-### Matching Procedure
+### Matching Procedure and C
 
 We first match each treated unit to its closest control unit without any caliper using the `matchit()` function:
 
@@ -213,7 +213,7 @@ Until now, we matched each treated unit to its closest control unit: we could ho
 matching_ps_w_calliper <-
   matchit(
     heat_wave ~ heat_wave_lag_1 + heat_wave_lag_2 + heat_wave_lag_3 + o3_lag_1 + o3_lag_2 + o3_lag_3 + no2 + no2_lag_1 + no2_lag_2 + no2_lag_3 + humidity_relative + month + week + year,
-    caliper = 0.5,
+    caliper = 0.1,
     data = data
   )
 
@@ -221,6 +221,49 @@ matching_ps_w_calliper <-
 matching_ps_w_calliper
 ```
 
-Compared to the matching without caliper, there are now `r matching_ps_w_calliper[["nn"]][3]`` matched treated units.
+Compared to the matching without caliper, there are now `r matching_ps_w_calliper[["nn"]][3]`` matched treated units. We can check whether the propensity score distributions overlap better:
+
+```{R, echo=TRUE, layout="l-body-outset", fig.width = 10, fig.height = 6, dev = "CairoPNG"}
+# distribution of propensity scores
+bal.plot(
+  matching_ps_w_calliper,
+  var.name = "distance",
+  which = "both",
+  sample.names = c("Initial Data", "Matched Data"),
+  type = "density"
+) +
+  ggtitle("Distribution of the Propensity Score Before and After Matching") +
+  xlab("Propensity Scores") +
+  scale_fill_manual(name = "Group:", values = c(my_orange, my_blue), labels = c("Days without Heat Waves", "Days with Heat Waves")) +
+  theme_tufte()
+```
+
+It seems to be better than the matching without caliper. We can also evaluate how each covariate balance has improved with a love plot:
+
+```{R, echo=TRUE, layout="l-body-outset", fig.width = 8, fig.height = 8, dev = "CairoPNG"}
+# make the love plot
+
+love.plot(
+  heat_wave ~ heat_wave_lag_1 + heat_wave_lag_2 + heat_wave_lag_3 + o3_lag_1 + o3_lag_2 + o3_lag_3 + no2 + no2_lag_1 + no2_lag_2 + no2_lag_3 + humidity_relative + month + week + year,
+  data = data,
+  estimand = "ATT",
+  weights = list("Without Caliper" = matching_ps_no_calliper,
+                 "With Caliper" = matching_ps_w_calliper),
+  drop.distance = TRUE,
+  abs = TRUE,
+  var.order = "unadjusted",
+  binary = "std",
+  thresholds = c(m = .1),
+  var.names = cov_labels,
+  sample.names = c("Initial Data", "Without Caliper", "With Caliper"),
+  shapes = c("circle", "triangle", "square"),
+  colors = c(my_orange, my_blue, "#06d6a0")
+) +
+  xlab("Absolute Standardized mean Differences") +
+  theme_tufte()
+```
+
+On this graph, it is not clear to see whether 
+
 
 
