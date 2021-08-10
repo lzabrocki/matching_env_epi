@@ -74,11 +74,15 @@ my_orange <- "#fb8500"
 
 # Propensity Score Matching
 
-We implement below a propensity score matching procedure where (i) we first predict the probability of the occurence of an heat wave for each day using a simple logistic regression model and (ii) each day with an heat wave is then matched to the most similar day without heat wave. Specifically, we vary the matching distance to see how covariates balance change:
+We implement below a propensity score matching procedure where (i) we first predict the probability of the occurrence of an heat wave for each day using a simple logistic regression model and (ii) each day with an heat wave is then matched to the most similar day without heat wave. In the matching jargon, this is a pair nearest neighbor matching procedure without remplacement.
+
+We vary the matching distance to see how covariates balance change:
 
 1. We first match each treated unit to its closest control unit.
 2. We then set the maximum distance (i.e., the caliper) allowed between a treated and control unit to be inferior 1 propensity score standard deviation. 
 3. We finally set the maximum distance (i.e., the caliper) allowed between a treated and control unit to be inferior 0.5 propensity score standard deviation. 
+
+Once treated and control units are matched, we assess whether covariates has improved. We finally estimate the treatment effect.
 
 ### Matching Procedure
 
