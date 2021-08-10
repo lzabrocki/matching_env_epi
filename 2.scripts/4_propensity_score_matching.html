@@ -1755,7 +1755,7 @@ text-align: justify}
 <p>On this graph, it is not clear to see whether covariates balance has really increased.</p>
 <h3 id="analysis-of-matched-data">Analysis of Matched Data</h3>
 <p>We now move to the analysis of the matched datasets using a simple regression model where we first regression the YoLL on the treatment indicator. We start with the matched data resulting from the propensity score without caliper:</p>
-<div class="layout-chunk" data-layout="l-body-outset">
+<div class="layout-chunk" data-layout="l-body">
 <div class="sourceCode">
 <pre class="sourceCode r"><code class="sourceCode r"><span class="co"># we retrieve the matched data</span>
 <span class="va">data_ps_no_calliper</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://kosukeimai.github.io/MatchIt/reference/match.data.html">match.data</a></span><span class="op">(</span><span class="va">matching_ps_no_calliper</span><span class="op">)</span>
@@ -1806,7 +1806,59 @@ conf.int <span class="op">=</span> <span class="cn">TRUE</span><span class="op">
 </tbody>
 </table>
 </div>
-<p>We find that the average effect on the treated is equal to +284 years of life lost. The 95% confidence interval is consistent with effects ranging from +230 up to +338. The estimate of the ATT is still far from the the true effect of +230 YoLL.</p>
+<p>We find that the average effect on the treated is equal to +284 years of life lost. The 95% confidence interval is consistent with effects ranging from +230 up to +338. The estimate of the ATT is still far from the the true effect of +230 YoLL. If we want to increase the precision of our estimate and remove any remaining imbalance in covariates, we can also run a multivariate regression. We adjust below for the same variables used in the estimation of propensity scores:</p>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class="co"># we fit the regression model</span>
+<span class="va">model_ps_no_calliper_w_cov</span> <span class="op">&lt;-</span>
+  <span class="fu"><a href="https://rdrr.io/r/stats/lm.html">lm</a></span><span class="op">(</span>
+    <span class="va">y_obs</span> <span class="op">~</span> <span class="va">heat_wave</span> <span class="op">+</span> <span class="va">heat_wave_lag_1</span> <span class="op">+</span> <span class="va">heat_wave_lag_2</span> <span class="op">+</span> <span class="va">heat_wave_lag_3</span> <span class="op">+</span> <span class="va">o3_lag_1</span> <span class="op">+</span> <span class="va">o3_lag_2</span> <span class="op">+</span> <span class="va">o3_lag_3</span> <span class="op">+</span> <span class="va">no2</span> <span class="op">+</span> <span class="va">no2_lag_1</span> <span class="op">+</span> <span class="va">no2_lag_2</span> <span class="op">+</span> <span class="va">no2_lag_3</span> <span class="op">+</span> <span class="va">humidity_relative</span> <span class="op">+</span> <span class="va">month</span> <span class="op">+</span> <span class="va">week</span> <span class="op">+</span> <span class="va">year</span>,
+    data <span class="op">=</span> <span class="va">data_ps_no_calliper</span>,
+    weights <span class="op">=</span> <span class="va">weights</span>
+  <span class="op">)</span>
+
+<span class="co"># retrieve the estimate and 95% ci</span>
+<span class="va">results_ps_no_calliper_w_cov</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://generics.r-lib.org/reference/tidy.html">tidy</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/lmtest/man/coeftest.html">coeftest</a></span><span class="op">(</span>
+  <span class="va">model_ps_no_calliper_w_cov</span>,
+  vcov. <span class="op">=</span> <span class="va">vcovCL</span>,
+  cluster <span class="op">=</span> <span class="op">~</span> <span class="va">subclass</span>
+<span class="op">)</span>,
+conf.int <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="https://rdrr.io/r/stats/filter.html">filter</a></span><span class="op">(</span><span class="va">term</span> <span class="op">==</span> <span class="st">&quot;heat_wave&quot;</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu">select</span><span class="op">(</span><span class="va">term</span>, <span class="va">estimate</span>, <span class="va">conf.low</span>, <span class="va">conf.high</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu">mutate_at</span><span class="op">(</span><span class="fu">vars</span><span class="op">(</span><span class="va">estimate</span><span class="op">:</span><span class="va">conf.high</span><span class="op">)</span>, <span class="op">~</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html">round</a></span><span class="op">(</span><span class="va">.</span>, <span class="fl">0</span><span class="op">)</span><span class="op">)</span>
+
+<span class="co"># display results</span>
+<span class="va">results_ps_no_calliper_w_cov</span> <span class="op">%&gt;%</span>
+  <span class="fu">rename</span><span class="op">(</span>
+    <span class="st">&quot;Term&quot;</span> <span class="op">=</span> <span class="va">term</span>,
+    <span class="st">&quot;Estimate&quot;</span> <span class="op">=</span> <span class="va">estimate</span>,
+    <span class="st">&quot;95% CI Lower Bound&quot;</span> <span class="op">=</span> <span class="va">conf.low</span>,
+    <span class="st">&quot;95% CI Upper Bound&quot;</span> <span class="op">=</span> <span class="va">conf.high</span>
+  <span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="https://rdrr.io/pkg/knitr/man/kable.html">kable</a></span><span class="op">(</span><span class="va">.</span>, align <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">&quot;l&quot;</span>, <span class="st">&quot;c&quot;</span>, <span class="st">&quot;c&quot;</span>, <span class="st">&quot;c&quot;</span><span class="op">)</span><span class="op">)</span>
+</code></pre>
+</div>
+<table>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Term</th>
+<th style="text-align: center;">Estimate</th>
+<th style="text-align: center;">95% CI Lower Bound</th>
+<th style="text-align: center;">95% CI Upper Bound</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">heat_wave</td>
+<td style="text-align: center;">252</td>
+<td style="text-align: center;">225</td>
+<td style="text-align: center;">279</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>We find that the average effect on the treated is equal to +252 years of life lost: the estimate is closer to the true effect. The 95% confidence interval is consistent with effects ranging from +225 up to +279. The width of confidence interval is now equal to 54, which is half smaller than the previous interval of 108.</p>
 <p>We also estimate the treatment effect for the matched dataset resulting from the matching procedure with a caliper. It is very important to note that the target causal estimand is not anymore the the average treatment on the treated as not all treated units could be matched to similar control units. To know the true causal effect for the match data, we compute the mean difference in potential outcomes:</p>
 <div class="layout-chunk" data-layout="l-body">
 <div class="sourceCode">
@@ -1868,7 +1920,59 @@ conf.int <span class="op">=</span> <span class="cn">TRUE</span><span class="op">
 </tbody>
 </table>
 </div>
-<p>The estimated is exactly equal to the true effect of +245. The 95% confidence interval is consistent with effects ranging from</p>
+<p>The estimated is exactly equal to the true effect of +245. The 95% confidence interval is consistent with effects ranging from +186 up to +303. We finally run the regression model where we adjust for covariates:</p>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class="co"># we fit the regression model</span>
+<span class="va">model_ps_w_calliper_w_cov</span> <span class="op">&lt;-</span>
+  <span class="fu"><a href="https://rdrr.io/r/stats/lm.html">lm</a></span><span class="op">(</span>
+    <span class="va">y_obs</span> <span class="op">~</span> <span class="va">heat_wave</span> <span class="op">+</span> <span class="va">heat_wave_lag_1</span> <span class="op">+</span> <span class="va">heat_wave_lag_2</span> <span class="op">+</span> <span class="va">heat_wave_lag_3</span> <span class="op">+</span> <span class="va">o3_lag_1</span> <span class="op">+</span> <span class="va">o3_lag_2</span> <span class="op">+</span> <span class="va">o3_lag_3</span> <span class="op">+</span> <span class="va">no2</span> <span class="op">+</span> <span class="va">no2_lag_1</span> <span class="op">+</span> <span class="va">no2_lag_2</span> <span class="op">+</span> <span class="va">no2_lag_3</span> <span class="op">+</span> <span class="va">humidity_relative</span> <span class="op">+</span> <span class="va">month</span> <span class="op">+</span> <span class="va">week</span> <span class="op">+</span> <span class="va">year</span>,
+    data <span class="op">=</span> <span class="va">data_ps_w_calliper</span>,
+    weights <span class="op">=</span> <span class="va">weights</span>
+  <span class="op">)</span>
+
+<span class="co"># retrieve the estimate and 95% ci</span>
+<span class="va">results_ps_w_calliper_w_cov</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://generics.r-lib.org/reference/tidy.html">tidy</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/lmtest/man/coeftest.html">coeftest</a></span><span class="op">(</span>
+  <span class="va">model_ps_w_calliper_w_cov</span>,
+  vcov. <span class="op">=</span> <span class="va">vcovCL</span>,
+  cluster <span class="op">=</span> <span class="op">~</span> <span class="va">subclass</span>
+<span class="op">)</span>,
+conf.int <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="https://rdrr.io/r/stats/filter.html">filter</a></span><span class="op">(</span><span class="va">term</span> <span class="op">==</span> <span class="st">&quot;heat_wave&quot;</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu">select</span><span class="op">(</span><span class="va">term</span>, <span class="va">estimate</span>, <span class="va">conf.low</span>, <span class="va">conf.high</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu">mutate_at</span><span class="op">(</span><span class="fu">vars</span><span class="op">(</span><span class="va">estimate</span><span class="op">:</span><span class="va">conf.high</span><span class="op">)</span>, <span class="op">~</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html">round</a></span><span class="op">(</span><span class="va">.</span>, <span class="fl">0</span><span class="op">)</span><span class="op">)</span>
+
+<span class="co"># display results</span>
+<span class="va">results_ps_w_calliper_w_cov</span> <span class="op">%&gt;%</span>
+  <span class="fu">rename</span><span class="op">(</span>
+    <span class="st">&quot;Term&quot;</span> <span class="op">=</span> <span class="va">term</span>,
+    <span class="st">&quot;Estimate&quot;</span> <span class="op">=</span> <span class="va">estimate</span>,
+    <span class="st">&quot;95% CI Lower Bound&quot;</span> <span class="op">=</span> <span class="va">conf.low</span>,
+    <span class="st">&quot;95% CI Upper Bound&quot;</span> <span class="op">=</span> <span class="va">conf.high</span>
+  <span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="https://rdrr.io/pkg/knitr/man/kable.html">kable</a></span><span class="op">(</span><span class="va">.</span>, align <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">&quot;l&quot;</span>, <span class="st">&quot;c&quot;</span>, <span class="st">&quot;c&quot;</span>, <span class="st">&quot;c&quot;</span><span class="op">)</span><span class="op">)</span>
+</code></pre>
+</div>
+<table>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Term</th>
+<th style="text-align: center;">Estimate</th>
+<th style="text-align: center;">95% CI Lower Bound</th>
+<th style="text-align: center;">95% CI Upper Bound</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">heat_wave</td>
+<td style="text-align: center;">249</td>
+<td style="text-align: center;">220</td>
+<td style="text-align: center;">278</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>We find that the average effect on the treated is equal to +249 years of life lost: the estimate is still very close to the true effect. The 95% confidence interval is consistent with effects ranging from +220 up to +278. The width of confidence interval is now equal to 58, which is half smaller than the previous interval of 117.</p>
 <div class="sourceCode" id="cb3"><pre class="sourceCode r distill-force-highlighting-css"><code class="sourceCode r"></code></pre></div>
 <!--radix_placeholder_article_footer-->
 <!--/radix_placeholder_article_footer-->

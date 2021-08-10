@@ -271,7 +271,7 @@ On this graph, it is not clear to see whether covariates balance has really incr
 
 We now move to the analysis of the matched datasets using a simple regression model where we first regression the YoLL on the treatment indicator. We start with the matched data resulting from the propensity score without caliper:
 
-```{R, echo=TRUE, layout="l-body-outset", fig.width = 8, fig.height = 8, dev = "CairoPNG"}
+```{R, echo=TRUE}
 # we retrieve the matched data
 data_ps_no_calliper <- match.data(matching_ps_no_calliper)
 
@@ -302,7 +302,41 @@ results_ps_no_calliper %>%
   kable(., align = c("l", "c", "c", "c"))
 ```
 
-We find that the average effect on the treated is equal to +`r results_ps_no_calliper$estimate` years of life lost. The 95% confidence interval is consistent with effects ranging from +`r results_ps_no_calliper$conf.low` up to +`r results_ps_no_calliper$conf.high`. The estimate of the ATT is still far from the the true effect of +230 YoLL. 
+We find that the average effect on the treated is equal to +`r results_ps_no_calliper$estimate` years of life lost. The 95% confidence interval is consistent with effects ranging from +`r results_ps_no_calliper$conf.low` up to +`r results_ps_no_calliper$conf.high`. The estimate of the ATT is still far from the the true effect of +230 YoLL. If we want to increase the precision of our estimate and remove any remaining imbalance in covariates, we can also run a multivariate regression. We adjust below for the same variables used in the estimation of propensity scores:
+
+```{R, echo=TRUE}
+# we fit the regression model
+model_ps_no_calliper_w_cov <-
+  lm(
+    y_obs ~ heat_wave + heat_wave_lag_1 + heat_wave_lag_2 + heat_wave_lag_3 + o3_lag_1 + o3_lag_2 + o3_lag_3 + no2 + no2_lag_1 + no2_lag_2 + no2_lag_3 + humidity_relative + month + week + year,
+    data = data_ps_no_calliper,
+    weights = weights
+  )
+
+# retrieve the estimate and 95% ci
+results_ps_no_calliper_w_cov <- tidy(coeftest(
+  model_ps_no_calliper_w_cov,
+  vcov. = vcovCL,
+  cluster = ~ subclass
+),
+conf.int = TRUE) %>%
+  filter(term == "heat_wave") %>%
+  select(term, estimate, conf.low, conf.high) %>%
+  mutate_at(vars(estimate:conf.high), ~ round(., 0))
+
+# display results
+results_ps_no_calliper_w_cov %>%
+  rename(
+    "Term" = term,
+    "Estimate" = estimate,
+    "95% CI Lower Bound" = conf.low,
+    "95% CI Upper Bound" = conf.high
+  ) %>%
+  kable(., align = c("l", "c", "c", "c"))
+```
+
+
+We find that the average effect on the treated is equal to +`r results_ps_no_calliper_w_cov$estimate` years of life lost: the estimate is closer to the true effect. The 95% confidence interval is consistent with effects ranging from +`r results_ps_no_calliper_w_cov$conf.low` up to +`r results_ps_no_calliper_w_cov$conf.high`. The width of confidence interval is now equal to `r results_ps_no_calliper_w_cov$conf.high - results_ps_no_calliper_w_cov$conf.low`, which is half smaller than the previous interval of `r results_ps_no_calliper$conf.high - results_ps_no_calliper$conf.low`.
 
 We also estimate the treatment effect for the matched dataset resulting from the matching procedure with a caliper. It is very important to note that the target causal estimand is not anymore the the average treatment on the treated as not all treated units could be matched to similar control units. To know the true causal effect for the match data, we compute the mean difference in potential outcomes:
 
@@ -316,8 +350,6 @@ true_att_ps__w_calliper <-
 ```
 
 The true effect for this match data is equal to +`r true_att_ps__w_calliper` YoLL, which is different for the true effect on **all** treated units. If we estimate this effect with a simple linear regression model, we get:
-
-
 
 ```{R, echo=TRUE}
 # we fit the regression model
@@ -347,8 +379,37 @@ results_ps_w_calliper %>%
   kable(., align = c("l", "c", "c", "c"))
 ```
 
-The estimated is exactly equal to the true effect of +`r true_att_ps__w_calliper`. The 95% confidence interval is consistent with effects ranging from 
+The estimated is exactly equal to the true effect of +`r true_att_ps__w_calliper`. The 95% confidence interval is consistent with effects ranging from +`r results_ps_w_calliper$conf.low` up to +`r results_ps_w_calliper$conf.high`. We finally run the regression model where we adjust for covariates:
 
+```{R, echo=TRUE}
+# we fit the regression model
+model_ps_w_calliper_w_cov <-
+  lm(
+    y_obs ~ heat_wave + heat_wave_lag_1 + heat_wave_lag_2 + heat_wave_lag_3 + o3_lag_1 + o3_lag_2 + o3_lag_3 + no2 + no2_lag_1 + no2_lag_2 + no2_lag_3 + humidity_relative + month + week + year,
+    data = data_ps_w_calliper,
+    weights = weights
+  )
 
+# retrieve the estimate and 95% ci
+results_ps_w_calliper_w_cov <- tidy(coeftest(
+  model_ps_w_calliper_w_cov,
+  vcov. = vcovCL,
+  cluster = ~ subclass
+),
+conf.int = TRUE) %>%
+  filter(term == "heat_wave") %>%
+  select(term, estimate, conf.low, conf.high) %>%
+  mutate_at(vars(estimate:conf.high), ~ round(., 0))
 
+# display results
+results_ps_w_calliper_w_cov %>%
+  rename(
+    "Term" = term,
+    "Estimate" = estimate,
+    "95% CI Lower Bound" = conf.low,
+    "95% CI Upper Bound" = conf.high
+  ) %>%
+  kable(., align = c("l", "c", "c", "c"))
+```
 
+We find that the average effect on the treated is equal to +`r results_ps_w_calliper_w_cov$estimate` years of life lost: the estimate is still very close to the true effect. The 95% confidence interval is consistent with effects ranging from +`r results_ps_w_calliper_w_cov$conf.low` up to +`r results_ps_w_calliper_w_cov$conf.high`. The width of confidence interval is now equal to `r results_ps_w_calliper_w_cov$conf.high - results_ps_w_calliper_w_cov$conf.low`, which is half smaller than the previous interval of `r results_ps_w_calliper$conf.high - results_ps_w_calliper$conf.low`.
