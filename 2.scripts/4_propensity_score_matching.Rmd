@@ -77,7 +77,9 @@ We finally load the data:
 ```{r, echo = TRUE}
 # load the data
 data <-
-  readRDS(here::here("1.data", "simulated_environmental_data.rds"))
+  readRDS(here::here("1.data", "simulated_environmental_data.rds")) %>%
+  # define week and year as factors
+  mutate_at(vars(week, year), ~ as.factor(.))
 ```
 
 As a reminder, there are `r nrow(data %>% filter(heat_wave==1))` days where an heat wave occurred and `r nrow(data %>% filter(heat_wave==0))` days without heat waves.
@@ -92,10 +94,9 @@ We first implement below a propensity score matching procedure where:
 We vary the matching distance to see how covariates balance change:
 
 1. We first match each treated unit to its closest control unit.
-2. We then set the maximum distance (i.e., the caliper) allowed between a treated and control unit to be inferior 1 propensity score standard deviation. 
-3. We finally set the maximum distance (i.e., the caliper) allowed between a treated and control unit to be inferior 0.5 propensity score standard deviation. 
+2. We then set the maximum distance (i.e., the caliper) allowed between a treated and control unit to be inferior 0.5 propensity score standard deviation. 
 
-Once treated and control units are matched, we then assess whether covariates has improved. 
+Once treated and control units are matched, we assess whether covariates has improved. 
 
 We finally estimate the treatment effect.
 
@@ -115,18 +116,111 @@ matching_ps_no_calliper <-
 matching_ps_no_calliper
 ```
 
-The output of the matching procedure indicates us the method (1:1 nearest neighbor matching without replacement) and the distance (propensity score) we used. It also tells us how many units were matched: `length(matching_ps_no_calliper[["match.matrix"]])`. We can then evaluate the covariates balance using the `summary()` function:
+The output of the matching procedure indicates us the method (1:1 nearest neighbor matching without replacement) and the distance (propensity score) we used. It also tells us how many treated units were matched: `r matching_ps_no_calliper[["nn"]][3]` (all treated units were matched). We assess how covariates balance has improved by comparing the distribution of propensity scores before and after matching: 
 
-```{r, echo = TRUE}
-# get summary statistics on covariates balance
-balance_ps_no_calliper <- summary(matching_ps_no_calliper) 
-```
-
-We display below summary statistics on the covariates balance for the matched data:
-
-```{r, echo = TRUE}
-love.plot(matching_ps_no_calliper, binary = "std", thresholds = c(m = .1)) +
+```{R, echo=TRUE, layout="l-body-outset", fig.width = 10, fig.height = 6, dev = "CairoPNG"}
+# distribution of propensity scores
+bal.plot(
+  matching_ps_no_calliper,
+  var.name = "distance",
+  which = "both",
+  sample.names = c("Initial Data", "Matched Data"),
+  type = "density"
+) +
+  ggtitle("Distribution of the Propensity Score Before and After Matching") +
+  xlab("Propensity Scores") +
+  scale_fill_manual(name = "Group:", values = c(my_orange, my_blue), labels = c("Days without Heat Waves", "Days with Heat Waves")) +
   theme_tufte()
-shapes = c("circle", "triangle"),
-          colors = c("red", "blue"))
 ```
+
+We see on this graph that propensity scores distribution for the two groups better overlap after matching. We can also evaluate the covariates balance using the `love.plot()` function from the cobalt package and the standardized mean difference as the summary statistic:
+
+```{R, echo=TRUE, layout="l-body-outset", fig.width = 8, fig.height = 8, dev = "CairoPNG"}
+# first we nicely label covariates
+cov_labels <- c(
+  heat_wave_lag_1 = "Heat Wave t-1",
+  heat_wave_lag_2 = "Heat Wave t-2",
+  heat_wave_lag_3 = "Heat Wave t-3",
+  o3_lag_1 = "O3 t-1",
+  o3_lag_2 = "O3 t-2",
+  o3_lag_3 = "O3 t-3",
+  no2 = "NO2",
+  no2_lag_1 = "NO2 t-1",
+  no2_lag_2 = "NO2 t-2",
+  no2_lag_3 = "NO2 t-3",
+  humidity_relative = "Relative Humidity",
+  month_august = "August",
+  month_june = "June",
+  month_july = "July",
+  week_22 = "Week 22",
+  week_23 = "Week 23",
+  week_24 = "Week 24",
+  week_25 = "Week 25",
+  week_26 = "Week 26",
+  week_27 = "Week 27",
+  week_28 = "Week 28",
+  week_29 = "Week 29",
+  week_30 = "Week 30",
+  week_31 = "Week 31",
+  week_32 = "Week 32",
+  week_33 = "Week 33",
+  week_34 = "Week 34",
+  week_35 = "Week 35",
+  year_1990 = "1990",
+  year_1991 = "1991",
+  year_1992 = "1992",
+  year_1993 = "1993",
+  year_1994 = "1994",
+  year_1995 = "1995",
+  year_1996 = "1996",
+  year_1997 = "1997",
+  year_1998 = "1998",
+  year_1999 = "1999",
+  year_2000 = "2000",
+  year_2001 = "2001",
+  year_2002 = "2002",
+  year_2003 = "2003",
+  year_2004 = "2004",
+  year_2005 = "2005",
+  year_2006 = "2006",
+  year_2007 = "2007"
+)
+
+# make the love plot
+love.plot(
+  matching_ps_no_calliper,
+  drop.distance = TRUE,
+  abs = TRUE,
+  var.order = "unadjusted",
+  binary = "std",
+  thresholds = c(m = .1),
+  var.names = cov_labels,
+  sample.names = c("Initial Data", "Matched Data"),
+  shapes = c("circle", "triangle"),
+  colors = c(my_orange, my_blue)
+) +
+  xlab("Absolute Standardized mean Differences") +
+theme_tufte()
+```
+
+On this graph, we can see that for most covariates balance has improved after matching---yet, for few covariates, the standardized mean difference has increased.
+
+
+Until now, we matched each treated unit to its closest control unit: we could however make sure that a treated unit is not matched to a control unit which is too much different. We do so by setting a caliper, the maximum distance in terms of proposenstiy score standard deviation allows between a treated and control. We below implement the same propensity score matching but with a caliper of 0.5:
+
+```{r, echo = TRUE}
+# match without caliper
+matching_ps_w_calliper <-
+  matchit(
+    heat_wave ~ heat_wave_lag_1 + heat_wave_lag_2 + heat_wave_lag_3 + o3_lag_1 + o3_lag_2 + o3_lag_3 + no2 + no2_lag_1 + no2_lag_2 + no2_lag_3 + humidity_relative + month + week + year,
+    caliper = 0.5,
+    data = data
+  )
+
+# display summary of the procedure
+matching_ps_w_calliper
+```
+
+Compared to the matching without caliper, there are now `r matching_ps_w_calliper[["nn"]][3]`` matched treated units.
+
+
