@@ -62,12 +62,12 @@ theme_tufte <- function() {
       strip.text.x = element_text(
         family = font,
         hjust = 0,
-        size = 16
+        size = 12
       ),
       strip.text.y = element_text(
         family = font,
         hjust = 0,
-        size = 16
+        size = 12
       ),
       # legend parameters
       legend.position = "top",

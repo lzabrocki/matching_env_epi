@@ -24,8 +24,6 @@ editor_options:
   chunk_output_type: console
 ---
 
-<!DOCTYPE html>
-
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(message = FALSE, warning = FALSE)
 ```
@@ -35,14 +33,14 @@ body {
 text-align: justify}
 </style>
 
-In this document, we provide all steps and R codes required to estimate the effect of heat waves of the number of years of life lost (YoLL) using a recently developed constrained pair matching algorithm. Compared to propensity score matching, we can choose the maximum distance allowed between treated and control units for each covariate. The coding procedure is a bit more involved as it has not been formated as an R package yet. **Should you have any questions, need help to reproduce the analysis or find coding errors, please do not hesitate to contact us at leo.zabrocki@psemail.eu**
+In this document, we provide all steps and R codes required to estimate the effect of heat waves of the number of years of life lost (YoLL) using a recently developed constrained pair matching algorithm. Compared to propensity score matching, we can choose the maximum distance allowed between treated and control units for each covariate. The coding procedure is a bit more involved as it has not been formatted as an R package yet. **Should you have any questions, need help to reproduce the analysis or find coding errors, please do not hesitate to contact us at leo.zabrocki@psemail.eu**
 
 # Required Packages and Data Loading
 
-To reproduce exactly the `4_propensity_score_matching.html` document, we first need to have installed:
+To reproduce exactly the `5_constrained_pair_matching.html` document, we first need to have installed:
 
 * the [R](https://www.r-project.org/) programming language 
-* [RStudio](https://rstudio.com/), an integrated development environment for R, which will allow you to knit the `4_propensity_score_matching.Rmd` file and interact with the R code chunks
+* [RStudio](https://rstudio.com/), an integrated development environment for R, which will allow you to knit the `5_constrained_pair_matching.Rmd` file and interact with the R code chunks
 * the [R Markdown](https://rmarkdown.rstudio.com/) package
 * and the [Distill](https://rstudio.github.io/distill/) package which provides the template for this document. 
 
@@ -54,12 +52,20 @@ library(knitr) # for creating the R Markdown document
 library(here) # for files paths organization
 library(tidyverse) # for data manipulation and visualization
 library(broom) # for cleaning regression outputs
-library(MatchIt) # for matching procedures
-library(cobalt) # for assessing covariates balance
+library(Rcpp) # for running the matching algorithm
+library(optmatch) # for matching pairs
+library(igraph) # for maximum bipartite matching
 library(lmtest) # for modifying regression standard errors
 library(sandwich) # for robust and cluster robust standard errors
 library(Cairo) # for printing custom police of graphs
 library(DT) # for displaying the data as tables
+```
+
+We also have to load the `script_time_series_matching_function.R` located in the **functions** folder and which provides the functions used for matching time series:
+
+```{r, echo = TRUE}
+# load matching functions
+source(here::here("2.scripts", "functions", "script_time_series_matching_function.R"))
 ```
 
 We load our custom `ggplot2` theme for graphs:
@@ -80,14 +86,435 @@ We finally load the data:
 
 ```{r, echo = TRUE}
 # load the data
-data <-
+matching_data <-
   readRDS(here::here("1.data", "simulated_environmental_data.rds")) %>%
-  # define week and year as factors
-  mutate_at(vars(week, year), ~ as.factor(.))
+  mutate_at(vars(weekday, month), ~ as.factor(.) %>% as.numeric(.)) %>%
+  mutate(d_year = lubridate::yday(date))
 ```
 
-As a reminder, there are `r nrow(data %>% filter(heat_wave==1))` days where an heat wave occurred and `r nrow(data %>% filter(heat_wave==0))` days without heat waves.
+# Matching Procedure
+
+### Defining the Treatment of Interest
+
+We defined our experiment such that:
+
+* treated units are days where an heat wave occurred in *t*.
+* control units are day no heat wave occurred in *t*.
+
+Below are the required steps to define treatment variable (`is_treated`) and select the corresponding treated and control units:
+
+```{r, echo=TRUE}
+# define treatment variable
+matching_data <- matching_data %>%
+  mutate(is_treated = ifelse(heat_wave == 1, TRUE, FALSE))
+
+# subSet treated and control units
+treated_units = subset(matching_data, is_treated)
+control_units = subset(matching_data,!is_treated)
+N_treated = nrow(treated_units)
+N_control = nrow(control_units)
+```
+
+There are `r N_treated` treated units and  `r N_control` control units. We display the distribution of of treated and control units through time:
+
+```{r, echo = TRUE, fig.width=8, fig.height=5, layout="l-body-outset", dev = "CairoPNG"}
+# make stripes graph
+matching_data %>%
+  mutate(is_treated = ifelse(is_treated == "TRUE", "Treated", "Control")) %>%
+  ggplot(., aes(x = date, y = 1, fill = is_treated)) +
+  geom_tile() +
+  scale_y_continuous(expand = c(0, 0)) +
+  facet_wrap(~ year, scales = "free") +
+  scale_fill_manual(name = "Daily Observations:", values = c(my_blue, my_orange)) +
+  xlab("Date") + ylab("") +
+  theme_tufte() +
+  theme(axis.ticks.y = element_blank(),
+        axis.text.y = element_blank())
+```
 
 
+We save the `matching_data`:
+
+```{r, echo=TRUE}
+saveRDS(matching_data, here::here("3.outputs", "1.data", "constrained_pair_matching", "matching_data.rds"))
+```
+
+### Defining Thresholds for Matching Covariates
+
+Below is the code to define the relevant thresholds:
+
+```{r, echo=TRUE}
+# we create the scaling list as it is needed for running the algorithm
+# but we do not use it
+
+scaling =  rep(list(1),ncol(matching_data))
+names(scaling) = colnames(matching_data)
+
+# instead, we manually defined the threshold for each covariate
+thresholds = rep(list(Inf),ncol(matching_data))
+names(thresholds) = colnames(matching_data)
+
+# threshold for year
+thresholds$year = 4
+
+# threshold for weekday
+thresholds$weekday = 0
+
+# thresholds for season
+thresholds$d_year = 30
+
+# threshold for heat_wave lags
+thresholds$heat_wave_lag_1 = 0
+thresholds$heat_wave_lag_2 = 0
+thresholds$heat_wave_lag_3 = 0
+
+# threshold for humidity_relative
+thresholds$humidity_relative = 10
+
+# threshold for o3
+thresholds$o3_lag_1 = 12
+thresholds$o3_lag_2 = 12
+thresholds$o3_lag_3 = 12
+
+# thresholds for no2
+thresholds$no2 = 9
+thresholds$no2_lag_1 = 9
+thresholds$no2_lag_2 = 9
+thresholds$no2_lag_3 = 9
+````
+
+### Running the Matching Procedure
+
+We compute discrepancy matrix and run the matching algorithm:
+
+```{R, echo=TRUE}
+# first we compute the discrepancy matrix
+discrepancies = discrepancyMatrix(treated_units, control_units, thresholds, scaling)
+
+# convert matching data to data.frame
+matching_data <- as.data.frame(matching_data)
+
+rownames(discrepancies) = format(matching_data$date[which(matching_data$is_treated)],"%Y-%m-%d")
+colnames(discrepancies) = format(matching_data$date[which(!matching_data$is_treated)],"%Y-%m-%d")
+rownames(matching_data) = matching_data$date
+
+# run the fullmatch algorithm
+matched_groups = fullmatch(discrepancies, data = matching_data, remove.unmatchables = TRUE, max.controls = 1)
+
+# get list of matched  treated-control groups
+groups_labels = unique(matched_groups[!is.na(matched_groups)])
+groups_list = list()
+for (i in 1:length(groups_labels)){
+  IDs = names(matched_groups)[(matched_groups==groups_labels[i])]
+  groups_list[[i]] = as.Date(IDs[!is.na(IDs)])
+}
+````
+
+For somes cases, several controls units were matched to a treatment unit. We use the `igraph` package to force pair matching via bipartite maximal weighted matching. Below is the required code:
+
+```{R, echo=TRUE}
+# we build a bipartite graph with one layer of treated nodes, and another layer of control nodes.
+# the nodes are labeled by integers from 1 to (N_treated + N_control)
+# by convention, the first N_treated nodes correspond to the treated units, and the remaining N_control
+# nodes correspond to the control units.
+
+# build pseudo-adjacency matrix: edge if and only if match is admissible
+# NB: this matrix is rectangular so it is not per say the adjacendy matrix of the graph
+# (for this bipartite graph, the adjacency matrix had four blocks: the upper-left block of size
+# N_treated by N_treated filled with 0's, bottom-right block of size N_control by N_control filled with 0's,
+# top-right block of size N_treated by N_control corresponding to adj defined below, and bottom-left block
+# of size N_control by N_treated corresponding to the transpose of adj)
+adj = (discrepancies<Inf)
+
+# extract endpoints of edges
+edges_mat = which(adj,arr.ind = TRUE)
+
+# build weights, listed in the same order as the edges (we use a decreasing function x --> 1/(1+x) to
+# have weights inversely proportional to the discrepancies, since maximum.bipartite.matching
+# maximizes the total weight and we want to minimize the discrepancy)
+weights = 1/(1+sapply(1:nrow(edges_mat),function(i)discrepancies[edges_mat[i,1],edges_mat[i,2]]))
+
+# format list of edges (encoded as a vector resulting from concatenating the end points of each edge)
+# i.e c(edge1_endpoint1, edge1_endpoint2, edge2_endpoint1, edge2_endpoint1, edge3_endpoint1, etc...)
+edges_mat[,"col"] = edges_mat[,"col"] + N_treated
+edges_vector = c(t(edges_mat))
+
+# NB: by convention, the first N_treated nodes correspond to the treated units, and the remaining N_control
+# nodes correspond to the control units (hence the "+ N_treated" to shift the labels of the control nodes)
+
+# build the graph from the list of edges
+BG = make_bipartite_graph(c(rep(TRUE,N_treated),rep(FALSE,N_control)), edges = edges_vector)
+
+# find the maximal weighted matching
+MBM = maximum.bipartite.matching(BG, weights = weights)
+
+# list the dates of the matched pairs
+pairs_list = list()
+N_matched = 0
+for (i in 1:N_treated){
+  if (!is.na(MBM$matching[i])){
+    N_matched = N_matched + 1
+    pairs_list[[N_matched]] = c(treated_units$date[i],control_units$date[MBM$matching[i]-N_treated])
+  }
+}
+
+# transform the list of matched pairs to a dataframe
+matched_pairs <- enframe(pairs_list) %>%
+  unnest(cols = "value") %>%
+  rename(pair_number = name,
+         date = value)
+````
+
+The hypothetical experiment we set up had `r N_treated` treated units and `r N_control` control units. The matching procedure results in `r N_matched` matched treated units.
+
+We finally merge the `matched_pairs` with the `matching_matching_data` to retrieve covariates values for the matched pairs and save the data:
+
+```{R, echo=TRUE}
+# select the matched data for the analysis
+final_data <- left_join(matched_pairs, matching_data, by = "date")
+
+# save the matched data
+saveRDS(final_data, here::here("3.outputs", "1.data", "constrained_pair_matching", "matched_data.Rds"))
+````
+
+# Checking Covariates Balance Improvement
+
+We bind the matching and matched data together:
+
+```{R, echo = TRUE}
+# bind the two datasets
+matching_data <- matching_data %>%
+  mutate(dataset = "Initial Data")
+
+final_data <- final_data %>%
+    mutate(dataset = "Matched Data")
+
+data <- bind_rows(matching_data, final_data)
+```
+
+We change labels of the `is_treated` variable :
+
+```{R, echo = TRUE}
+data <- data %>%
+  mutate(is_treated = ifelse(is_treated == "TRUE", "True", "False"))
+```
+
+Love Plots
+
+### Continuous Covariates
+
+```{R, echo=TRUE, layout="l-body-outset", fig.width=8, fig.height=4, dev = "CairoPNG"}
+# compute figures for the love plot
+data_cov_continuous <- data %>%
+  select(dataset, is_treated, contains("humidity_relative"), o3_lag_1:o3_lag_3, no2:no2_lag_3) %>%
+  pivot_longer(cols = -c(is_treated, dataset), names_to = "variable", values_to = "values") %>%
+  mutate(continuous_variable = NA %>%   
+           ifelse(str_detect(variable, "o3"), "O3",.) %>%
+           ifelse(str_detect(variable, "humidity_relative"), "Relative Humidity",.) %>%
+           ifelse(str_detect(variable, "no2"), "NO2",.)) %>%
+    mutate(time = "0" %>%
+           ifelse(str_detect(variable, "lag_1"), "-1", .) %>%
+           ifelse(str_detect(variable, "lag_2"), "-2", .) %>%
+           ifelse(str_detect(variable, "lag_3"), "-3", .)) %>%
+  mutate(time = fct_relevel(time, "-3", "-2", "-1", "0")) %>%
+  select(dataset, is_treated, continuous_variable, time, values)
+
+data_abs_difference_continuous <- data_cov_continuous %>%
+  group_by(dataset, continuous_variable, time, is_treated) %>%
+  summarise(mean_values = mean(values, na.rm = TRUE)) %>%
+  summarise(abs_difference = abs(mean_values[2]-mean_values[1]))
+
+data_sd_continuous <-  data_cov_continuous %>%
+  filter(is_treated == "True") %>%
+  group_by(dataset, continuous_variable, time, is_treated) %>%
+  summarise(sd_treatment = sd(values, na.rm = TRUE)) %>%
+  ungroup() %>%
+  select(dataset, continuous_variable, time, sd_treatment)
+
+data_love_continuous <- left_join(data_abs_difference_continuous, data_sd_continuous, by = c("dataset", "continuous_variable", "time")) %>%
+  mutate(standardized_difference = abs_difference/sd_treatment) %>%
+  select(-c(abs_difference,sd_treatment))
+
+# make the graph
+ggplot(data_love_continuous, aes(y = time, x = standardized_difference, colour = fct_rev(dataset), shape = fct_rev(dataset))) +
+  geom_vline(xintercept = 0, size = 0.3) +
+  geom_vline(xintercept = 0.1, color = "black", linetype = "dashed") +
+  geom_point(size = 4, alpha = 0.8) +
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 5)) +
+  scale_colour_manual(name = "Dataset:", values = c(my_blue, my_orange)) +
+  scale_shape_manual(name = "Dataset:", values = c(17, 16)) +
+  facet_wrap(~ continuous_variable, scales = "free_y") +
+  xlab("Standardized Mean Differences") +
+  ylab("Day") + 
+  theme_tufte()
+```
+
+### Calendar Indicators
+
+Create the relevant data:
+
+```{R, echo=TRUE}
+# compute figures for the love plot
+data_calendar <- data %>%
+  mutate(weekday = lubridate::wday(date, abbr = FALSE, label = TRUE)) %>%
+  select(dataset, is_treated, weekday, month, year) %>%
+  mutate_all(~ as.character(.)) %>%
+  pivot_longer(cols = -c(dataset, is_treated), names_to = "variable", values_to = "values") %>%
+  # group by is_treated, variable and values
+  group_by(dataset, is_treated, variable, values) %>%
+  # compute the number of observations
+  summarise(n = n()) %>%
+  # compute the proportion
+  mutate(freq = round(n / sum(n)*100, 0)) %>%
+  ungroup() %>%
+  mutate(calendar_variable = NA %>%
+           ifelse(str_detect(variable, "weekday"), "Day of the Week",.) %>%
+           ifelse(str_detect(variable, "month"), "Month",.) %>%
+           ifelse(str_detect(variable, "year"), "Year",.)) %>%
+  select(dataset, is_treated, calendar_variable, values, freq) %>%
+  pivot_wider(names_from = is_treated, values_from = freq) %>%
+  mutate(abs_difference = abs(`True` - `False`)) %>%
+  filter(values != "False")
+```
+
+Plot for days of the week:
+
+```{R, echo=TRUE, message = FALSE, warning = FALSE, layout="l-body-outset", fig.width=10, fig.height=5, dev = "CairoPNG"}
+# graph for weekdays
+data_calendar %>%
+  filter(calendar_variable == "Day of the Week") %>%
+  mutate(
+    values = fct_relevel(
+      values,
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+      "Sunday"
+    )
+  ) %>%
+  ggplot(., aes(
+    y = fct_rev(values),
+    x = abs_difference,
+    colour = fct_rev(dataset),
+    shape = fct_rev(dataset)
+  )) +
+  geom_vline(xintercept = 0, size = 0.3) +
+  geom_point(size = 4, alpha = 0.8) +
+  scale_colour_manual(name = "Dataset:", values = c(my_blue, my_orange)) +
+  scale_shape_manual(name = "Dataset:", values = c(17, 16)) +
+  xlab("Absolute Difference in Percentage Points") +
+  ylab("") +
+  theme_tufte() +
+  theme(axis.text.x = element_text(margin = ggplot2::margin(t = 0, unit = "cm")))
+```
+
+Plot for months:
+
+```{R, echo=TRUE, message = FALSE, warning = FALSE, layout="l-body-outset", fig.width=8, fig.height=4, dev = "CairoPNG"}
+# graph for month
+data_calendar %>%
+  filter(calendar_variable == "Month") %>%
+  mutate(
+    values = fct_relevel(
+      values,
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December"
+    )
+  ) %>%
+  ggplot(., aes(
+    y = fct_rev(values),
+    x = abs_difference,
+    colour = fct_rev(dataset),
+    shape = fct_rev(dataset)
+  )) +
+  geom_vline(xintercept = 0, size = 0.3) +
+  geom_point(size = 4, alpha = 0.8) +
+  scale_colour_manual(name = "Dataset:", values = c(my_blue, my_orange)) +
+  scale_shape_manual(name = "Dataset:", values = c(17, 16)) +
+  ggtitle("Month") +
+  xlab("Absolute Difference in Percentage Points") +
+  ylab("") +
+  theme_tufte() +
+  theme(axis.text.x = element_text(margin = ggplot2::margin(t = 0, unit = "cm")))
+```
+
+Plot for years:
+
+```{R, echo=TRUE, message = FALSE, warning = FALSE, layout="l-body-outset", fig.width=10, fig.height=5, dev = "CairoPNG"}
+# graph for year
+data_calendar %>%
+  filter(calendar_variable == "Year") %>%
+  ggplot(., aes(
+    y = as.factor(as.numeric(values)),
+    x = abs_difference,
+    colour = fct_rev(dataset),
+    shape = fct_rev(dataset)
+  )) +
+  geom_vline(xintercept = 0, size = 0.3) +
+  geom_point(size = 4, alpha = 0.8) +
+  scale_colour_manual(name = "Dataset:", values = c(my_blue, my_orange)) +
+  scale_shape_manual(name = "Dataset:", values = c(17, 16)) +
+  ggtitle("Year") +
+  xlab("Absolute Difference in Percentage Points") +
+  ylab("") +
+  theme_tufte() +
+  theme(axis.text.x = element_text(margin = ggplot2::margin(t = 0, unit = "cm")))
+```
 
 
+# Analysing Results
+
+Must be careful, only `r N_matched` treated units were matched. To know the true causal effect, we must compute the average difference in potential outcomes:
+
+```{R, echo=TRUE}
+# compute the true effect for the data
+true_att <-
+  round(mean(final_data$y_1[final_data$is_treated == TRUE] - final_data$y_0[final_data$is_treated == FALSE]), 0)
+```
+
+The true causal effect is equal to + `r true_att`. We then compute the estimate using a simple linear regression model:
+
+```{R, echo=TRUE}
+# we fit the regression model
+model <-
+  lm(
+    y_obs ~ is_treated + pair_number,
+    data = final_data
+  )
+
+# retrieve the estimate and 95% ci
+results <- tidy(coeftest(
+  model,
+  vcov. = vcovCL,
+  cluster = ~ pair_number
+),
+conf.int = TRUE) %>%
+  filter(term == "is_treatedTRUE") %>%
+  select(term, estimate, conf.low, conf.high) %>%
+  mutate_at(vars(estimate:conf.high), ~ round(., 0))
+
+# display results
+results %>%
+  rename(
+    "Term" = term,
+    "Estimate" = estimate,
+    "95% CI Lower Bound" = conf.low,
+    "95% CI Upper Bound" = conf.high
+  ) %>%
+  kable(., align = c("l", "c", "c", "c"))
+```
+
+We find that the average effect on the treated is equal to +`r results$estimate` years of life lost: the estimate is still very close to the true effect. The 95% confidence interval is consistent with effects ranging from +`r results$conf.low` up to +`r results$conf.high`.
