@@ -8,5 +8,6 @@ Current scripts added:
 2. Outcome Regression Analysis
 3. EDA Covariates Balance
 4. Propensity Score Analysis
+5. Constrained Pair Matching Analysis
 
 To display the scripts, you must download the .html file and then open it with your internet browser.
