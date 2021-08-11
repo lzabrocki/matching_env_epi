@@ -1,0 +1,93 @@
+---
+title: "Constrained Pair Matching"
+description: |
+  Detailled Script.
+author:
+  - name: Tarik Benmarhnia 
+    url: https://profiles.ucsd.edu/tarik.benmarhnia
+    affiliation: University of California San Diego
+    affiliation_url: https://profiles.ucsd.edu/tarik.benmarhnia
+  - name: Marie-Abèle Bind 
+    url: https://scholar.google.com/citations?user=gyPCRcEAAAAJ&hl=fr
+    affiliation: 	Massachusetts General Hospital
+    affiliation_url: https://scholar.google.com/citations?user=gyPCRcEAAAAJ&hl=fr
+  - name: Léo Zabrocki 
+    url: https://www.parisschoolofeconomics.eu/en/
+    affiliation: Paris School of Economics
+    affiliation_url: https://www.parisschoolofeconomics.eu/en/
+date: "`r Sys.Date()`"
+output: 
+    distill::distill_article:
+      toc: true
+      toc_depth: 3
+editor_options: 
+  chunk_output_type: console
+---
+
+<!DOCTYPE html>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = FALSE, warning = FALSE)
+```
+
+<style>
+body {
+text-align: justify}
+</style>
+
+In this document, we provide all steps and R codes required to estimate the effect of heat waves of the number of years of life lost (YoLL) using a recently developed constrained pair matching algorithm. Compared to propensity score matching, we can choose the maximum distance allowed between treated and control units for each covariate. The coding procedure is a bit more involved as it has not been formated as an R package yet. **Should you have any questions, need help to reproduce the analysis or find coding errors, please do not hesitate to contact us at leo.zabrocki@psemail.eu**
+
+# Required Packages and Data Loading
+
+To reproduce exactly the `4_propensity_score_matching.html` document, we first need to have installed:
+
+* the [R](https://www.r-project.org/) programming language 
+* [RStudio](https://rstudio.com/), an integrated development environment for R, which will allow you to knit the `4_propensity_score_matching.Rmd` file and interact with the R code chunks
+* the [R Markdown](https://rmarkdown.rstudio.com/) package
+* and the [Distill](https://rstudio.github.io/distill/) package which provides the template for this document. 
+
+Once everything is set up, we load the following packages:
+
+```{r, echo = TRUE}
+# load required packages
+library(knitr) # for creating the R Markdown document
+library(here) # for files paths organization
+library(tidyverse) # for data manipulation and visualization
+library(broom) # for cleaning regression outputs
+library(MatchIt) # for matching procedures
+library(cobalt) # for assessing covariates balance
+library(lmtest) # for modifying regression standard errors
+library(sandwich) # for robust and cluster robust standard errors
+library(Cairo) # for printing custom police of graphs
+library(DT) # for displaying the data as tables
+```
+
+We load our custom `ggplot2` theme for graphs:
+
+```{r, echo = TRUE}
+# load ggplot custom theme
+source(here::here(
+  "2.scripts",
+  "functions",
+  "script_theme_tufte.R"
+))
+# define nice colors
+my_blue <- "#0081a7"
+my_orange <- "#fb8500"
+```
+
+We finally load the data:
+
+```{r, echo = TRUE}
+# load the data
+data <-
+  readRDS(here::here("1.data", "simulated_environmental_data.rds")) %>%
+  # define week and year as factors
+  mutate_at(vars(week, year), ~ as.factor(.))
+```
+
+As a reminder, there are `r nrow(data %>% filter(heat_wave==1))` days where an heat wave occurred and `r nrow(data %>% filter(heat_wave==0))` days without heat waves.
+
+
+
+
