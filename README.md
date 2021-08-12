@@ -11,3 +11,9 @@ Current scripts added:
 5. Constrained Pair Matching Analysis
 
 To display the scripts, you must download the .html file and then open it with your internet browser.
+
+To-Do List:
+
+* graphique des intervalles de confiances.
+* overall check de la ballance pour les différentes méthodes.
+* dans la papier, décrire les différentes approches de matching.
