@@ -137,3 +137,58 @@ results_genetic_matching %>%
 ```
 
 We find that the average effect on the treated is equal to +`r results_genetic_matching$estimate` years of life lost. The 95% confidence interval is consistent with effects ranging from +`r results_genetic_matching$conf.low` up to +`r results_genetic_matching$conf.high`.
+
+# Coarsened Exact Matching
+
+Cutpoints:
+
+```{R, echo=TRUE}
+data <-
+  readRDS(here::here("1.data", "simulated_environmental_data.rds")) %>%
+  # define week and year as factors
+  mutate_at(vars(week, year), ~ as.factor(.))
+
+data <- data %>%
+  mutate(year = as.numeric(as.character(year))) %>%
+  mutate(year = case_when(year <= 2000 ~ "1990-2000",
+                          year > 2000 ~ "2001-2007"))
+
+
+cutpoints = list(o3_lag_1 = "q3",
+                 o3_lag_2 = "q5",
+                 o3_lag_3 = "q3",
+                 no2 = "q3",
+                 no2_lag_1 = "q5",
+                 no2_lag_2 = "q5",
+                 no2_lag_3 = "q2",
+                 humidity_relative = "q3")
+
+m.out <-
+  matchit(
+    heat_wave ~ heat_wave_lag_1 + heat_wave_lag_2 + heat_wave_lag_3 + o3_lag_1 + o3_lag_2 + o3_lag_3 + no2 + no2_lag_1 + no2_lag_2 + no2_lag_3 + humidity_relative + year,
+    data = data,
+    method = "cem",
+    cutpoints = cutpoints,
+    k2k = TRUE
+  )
+
+m.out
+
+summary(m.out)
+
+
+# make the love plot
+love.plot(
+  heat_wave ~ heat_wave_lag_1 + heat_wave_lag_2 + heat_wave_lag_3 + o3_lag_1 + o3_lag_2 + o3_lag_3 + no2 + no2_lag_1 + no2_lag_2 + no2_lag_3 + humidity_relative + year,
+  data = data,
+  weights = get.w(m.out),
+  method = "matching",
+  abs = TRUE,
+  var.order = "unadjusted",
+  binary = "std",
+  estimand = "ATT",
+  thresholds = c(m = .1)
+) +
+  xlab("Absolute Standardized mean Differences") +
+  theme_tufte()
+```
