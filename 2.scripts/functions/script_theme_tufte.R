@@ -79,7 +79,6 @@ theme_tufte <- function() {
         face = "bold"
       ),
       legend.text = element_text(family = font, size = 12)
-      #plot.margin = margin(0.25, 0.25, 0.25, 0.25, "cm")
     )
 }
 

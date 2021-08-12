@@ -1,5 +1,5 @@
 ---
-title: "Simulating Environmental Data on Heat Waves and Years of Life Lost"
+title: "Simulating Environmental Data on the Effect of Heat Waves on Years of Life Lost"
 description: |
   Detailled Script.
 author:
@@ -23,7 +23,15 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(message = FALSE, warning = FALSE)
+# code chunk option
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  layout="l-body-outset",
+  dev = "CairoPNG",
+  dpi = 600
+)
 ```
 
 <style>
@@ -31,7 +39,7 @@ body {
 text-align: justify}
 </style>
 
-In this document, we providing all steps and R codes required to simulate the environmental data. For each day, we simulate the number of years of life lost with and without the occurrence of a heat wave. **Should you have any questions, need help to reproduce the simulation or find coding errors, please do not hesitate to contact us at leo.zabrocki@psemail.eu**
+In this document, we provide all steps and R codes required to simulate the environmental data. For each day, we simulate the number of years of life lost (YoLL) with and without the occurrence of an heat wave. **Should you have any questions, need help to reproduce the simulation or find coding errors, please do not hesitate to contact us at leo.zabrocki@psemail.eu**
 
 # Required Packages
 
@@ -49,7 +57,6 @@ Once everything is set up, we load the following packages:
 library(knitr) # for creating the R Markdown document
 library(here) # for files paths organization
 library(tidyverse) # for data manipulation and visualization
-library(mgcv) # for fitting gam
 library(ggridges) # for ridge density plots
 library(Cairo) # for printing custom police of graphs
 library(DT) # for displaying the data as tables
@@ -71,7 +78,7 @@ my_orange <- "#fb8500"
 
 # Environmental Data
 
-We base our simulation on a dataset that includes all residents of the island of Montreal, Canada, who died from non-accidental causes in the city during the summer periods (i.e., June-August) between 1990 and 2007 (observations with missing values were dropped to ease the simulation procedure). We load the environmental dataset `data.rds` located in the `1.data` folder:
+We base our simulation on a dataset that includes all residents of the island of Montreal, Canada, who died from non-accidental causes in the city during the summer periods (June-August) between 1990 and 2007. Daily bservations with missing values were dropped to ease the simulation procedure. We load the environmental dataset `data.rds` located in the `1.data` folder:
 
 ```{r, echo = TRUE}
 # load environmental data
@@ -103,6 +110,69 @@ We provide below the definition of the variables. If a variable's name includes 
 * `no2`: daily average concentration of nitrogen dioxide ($\mu g/m^3$).
 * The rest of the variables are dummy indicators for the week of the day, the week of the year, the month and the year.
 
+```{r, fig.width=10, fig.height=5, code_folding="Please show me the code!"}
+data %>%
+  pivot_longer(
+    cols = c(
+      humidity_relative,
+      temperature_minimum,
+      temperature_average,
+      temperature_maximum,
+      o3,
+      no2
+    ),
+    names_to = "variable",
+    values_to = "value"
+  ) %>%
+  mutate(
+    variable = case_when(
+      variable == "humidity_relative" ~ "Relative Humidity (%)",
+      variable == "temperature_minimum" ~ "Minimum Temperature (°C)",
+      variable == "temperature_average" ~ "Average Temperature (°C)",
+      variable == "temperature_maximum" ~ "Maxmimum Temperature (°C)",
+      variable == "o3" ~ "O3 (µg/m³)",
+      variable == "no2" ~ "NO2 (µg/m³)"
+    )
+  ) %>%
+  mutate(
+    variable = fct_relevel(
+      variable,
+      "Minimum Temperature (°C)",
+      "Average Temperature (°C)",
+      "Maxmimum Temperature (°C)",
+      "Relative Humidity (%)",
+      "NO2 (µg/m³)",
+      "O3 (µg/m³)"
+    )
+  ) %>%
+  mutate(heat_wave = ifelse(heat_wave == 1, "Days with Heat Wave", "Days without Heat Wave")) %>%
+  ggplot(., aes(x = value, colour = fct_rev(heat_wave))) +
+  geom_density() +
+  scale_color_manual(name = "Group:", values = c(my_blue, my_orange)) +
+  facet_wrap(~ variable, scales = "free") +
+  ggtitle("Density Distribution of Weather and Air Pollution Variables") +
+  xlab("Value") + ylab("Density") +
+  theme_tufte() +
+  theme(axis.ticks.y = element_blank(),
+        axis.text.y = element_blank())
+```
+
+
+
+```{r, fig.width=8, fig.height=5}
+# make stripes graph
+data %>%
+  mutate(is_treated = ifelse(heat_wave == 1, "Treated", "Control")) %>%
+  ggplot(., aes(x = date, y = 1, fill = is_treated)) +
+  geom_tile() +
+  scale_y_continuous(expand = c(0, 0)) +
+  facet_wrap(~ year, scales = "free") +
+  scale_fill_manual(name = "Daily Observations:", values = c(my_blue, my_orange)) +
+  xlab("Date") + ylab("") +
+  theme_tufte() +
+  theme(axis.ticks.y = element_blank(),
+        axis.text.y = element_blank())
+```
 
 # Simulating Potential Outcomes
 
@@ -227,9 +297,12 @@ data %>%
   ggplot(., aes(x = values, color = potential_outcomes)) +
   geom_density(key_glyph = "polygon") +
   geom_vline(data = data_mean_po, aes(xintercept = mean_po, colour = potential_outcomes), key_glyph = "blank") +
-  scale_color_manual(name = "Potential Outcomes", values = c(my_blue, my_orange)) +
+  scale_color_manual(name = "Potential Outcomes:", values = c(my_blue, my_orange)) +
+  ggtitle("Distribution of Potential Outcomes by Treatment Status") +
   xlab("Daily Number of Years of Life Lost") + ylab("Density") +
-  theme_tufte()
+  theme_tufte() +
+  theme(axis.ticks.y = element_blank(),
+        axis.text.y = element_blank())
 ```
 
 

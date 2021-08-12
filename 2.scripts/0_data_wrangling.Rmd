@@ -74,7 +74,6 @@ data <- data %>%
   fastDummies::dummy_cols(., select_columns = c("weekday", "week", "month", "year"))
 ```
 
-
 ### Weather Variables
 
 We rename weather variables:
