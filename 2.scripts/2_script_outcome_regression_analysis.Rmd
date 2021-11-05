@@ -3,18 +3,18 @@ title: "Outcome Regression Analysis"
 description: |
   Detailled Script.
 author:
-  - name: Tarik Benmarhnia 
+  - name: Tarik Benmarhnia
     url: https://profiles.ucsd.edu/tarik.benmarhnia
-    affiliation: University of California San Diego
-    affiliation_url: https://profiles.ucsd.edu/tarik.benmarhnia
+    affiliation: UCSD & Scripps Institute
+    affiliation_url: https://benmarhniaresearch.ucsd.edu/
   - name: Marie-Abèle Bind 
-    url: https://scholar.google.com/citations?user=gyPCRcEAAAAJ&hl=fr
-    affiliation: 	Massachusetts General Hospital
-    affiliation_url: https://scholar.google.com/citations?user=gyPCRcEAAAAJ&hl=fr
+    url: https://scholar.harvard.edu/marie-abele
+    affiliation: Biostatistics Center, Massachusetts General Hospital
+    affiliation_url: https://biostatistics.massgeneral.org/faculty/marie-abele-bind-phd/
   - name: Léo Zabrocki 
-    url: https://www.parisschoolofeconomics.eu/en/
+    url: https://lzabrocki.github.io/
     affiliation: Paris School of Economics
-    affiliation_url: https://www.parisschoolofeconomics.eu/en/
+    affiliation_url: https://www.parisschoolofeconomics.eu/fr/zabrocki-leo/
 date: "`r Sys.Date()`"
 output: 
     distill::distill_article:
@@ -88,8 +88,9 @@ data <-
 
 To explore whether heat waves lead to an increase in YoLL, we could first compare the distribution of the outcome between days with heat waves and days without heat waves:
 
-```{r}
-data %>%
+```{r, fig.width=10, fig.height=5, code_folding="Please show me the code!"}
+# make graph
+graph_boxplot_yoll <- data %>%
   # recode heat_wave variable
   mutate(heat_wave = ifelse(heat_wave == 1, "Days with Heat Wave", "Days without Heat Wave")) %>%
   # make a boxplots graph
@@ -109,6 +110,19 @@ data %>%
   ggtitle("Number of Years of Life Lost According to Heat Wave Status") +
   theme_tufte() +
   guides(color = FALSE)
+
+# display the graph
+graph_boxplot_yoll
+
+# save the graph
+ggsave(
+  graph_boxplot_yoll,
+  filename = here::here("3.outputs", "2.graphs", "graph_boxplot_yoll.pdf"),
+  width = 15,
+  height = 8,
+  units = "cm",
+  device = cairo_pdf
+)
 ```
 
 On this graph, we can see that the median of the number of years of life lost for days with heat waves is higher by about 400 YoLL than the median of days without heat waves. 

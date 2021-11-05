@@ -3,18 +3,18 @@ title: "Simulating Environmental Data on the Effect of Heat Waves on Years of Li
 description: |
   Detailled Script.
 author:
-  - name: Tarik Benmarhnia 
+  - name: Tarik Benmarhnia
     url: https://profiles.ucsd.edu/tarik.benmarhnia
-    affiliation: University of California San Diego
-    affiliation_url: https://profiles.ucsd.edu/tarik.benmarhnia
+    affiliation: UCSD & Scripps Institute
+    affiliation_url: https://benmarhniaresearch.ucsd.edu/
   - name: Marie-Abèle Bind 
-    url: https://scholar.google.com/citations?user=gyPCRcEAAAAJ&hl=fr
-    affiliation: 	Massachusetts General Hospital
-    affiliation_url: https://scholar.google.com/citations?user=gyPCRcEAAAAJ&hl=fr
+    url: https://scholar.harvard.edu/marie-abele
+    affiliation: Biostatistics Center, Massachusetts General Hospital
+    affiliation_url: https://biostatistics.massgeneral.org/faculty/marie-abele-bind-phd/
   - name: Léo Zabrocki 
-    url: https://www.parisschoolofeconomics.eu/en/
+    url: https://lzabrocki.github.io/
     affiliation: Paris School of Economics
-    affiliation_url: https://www.parisschoolofeconomics.eu/en/
+    affiliation_url: https://www.parisschoolofeconomics.eu/fr/zabrocki-leo/
 date: "`r Sys.Date()`"
 output: 
     distill::distill_article:
@@ -164,7 +164,7 @@ graph_cov_densities
 # save the graph
 ggsave(
   graph_cov_densities,
-  filename = here::here("3.outputs", "2.graphs", "graph_cov_densities"),
+  filename = here::here("3.outputs", "2.graphs", "graph_cov_densities.pdf"),
   width = 15,
   height = 8,
   units = "cm",
@@ -194,7 +194,7 @@ graph_stripes_treatment
 # save the graph
 ggsave(
   graph_stripes_treatment,
-  filename = here::here("3.outputs", "2.graphs", "graph_stripes_treatment"),
+  filename = here::here("3.outputs", "2.graphs", "graph_stripes_treatment.pdf"),
   width = 15,
   height = 8,
   units = "cm",
@@ -358,7 +358,7 @@ graph_po_densities
 # save the graph
 ggsave(
   graph_po_densities,
-  filename = here::here("3.outputs", "2.graphs", "graph_po_densities"),
+  filename = here::here("3.outputs", "2.graphs", "graph_po_densities.pdf"),
   width = 15,
   height = 8,
   units = "cm",
