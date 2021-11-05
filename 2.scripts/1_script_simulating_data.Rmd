@@ -78,22 +78,25 @@ my_orange <- "#fb8500"
 
 # Environmental Data
 
-We base our simulation on a dataset that includes all residents of the island of Montreal, Canada, who died from non-accidental causes in the city during the summer periods (June-August) between 1990 and 2007. Daily bservations with missing values were dropped to ease the simulation procedure. We load the environmental dataset `data.rds` located in the `1.data` folder:
+We base our simulation on a dataset that includes all residents of the island of Montreal, Canada, who died from non-accidental causes in the city during the summer periods (June-August) between 1990 and 2007. Daily observations with missing values were dropped to ease the simulation procedure. We load the environmental dataset `aw_environmental_data.rds` located in the `1.data` folder:
 
 ```{r, echo = TRUE}
 # load environmental data
 data <-
   readRDS(here::here("1.data", "raw_environmental_data.rds"))
+```
 
+We display below five of the variables included in the data:
+
+```{r, echo = FALSE}
 # display part of the data
 datatable(data %>% select(id, date, yll, total_death, heat_wave))
 ```
 
-The dataset contains `nrow(data)` daily observations.  During the study period, the daily YoLL ranged from 1,076 years to 6,739 years (mean = 2,660 years).
 
-We provide below the definition of the variables. If a variable's name includes the term "lag", it indicates the lag of this variable (e.g., `o3_lag_1` represents the first daily lag of the ozone concentration). 
+The dataset contains `nrow(data)` daily observations. We provide below the definition of the variables. If a variable's name includes the term "lag", it indicates the lag of this variable (e.g., `o3_lag_1` represents the first daily lag of the ozone concentration). 
 
-* `id`: the daily unit index in the dataset.
+* `id`: the daily unit index in the data.
 * `date`: the date of the observation in year-month-day format.
 * `weekday`: the day of the week.
 * `week`: the week of the year.
