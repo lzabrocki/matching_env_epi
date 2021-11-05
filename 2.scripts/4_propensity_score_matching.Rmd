@@ -3,18 +3,18 @@ title: "Propensity Score Matching"
 description: |
   Detailled Script.
 author:
-  - name: Tarik Benmarhnia 
+  - name: Tarik Benmarhnia
     url: https://profiles.ucsd.edu/tarik.benmarhnia
-    affiliation: University of California San Diego
-    affiliation_url: https://profiles.ucsd.edu/tarik.benmarhnia
+    affiliation: UCSD & Scripps Institute
+    affiliation_url: https://benmarhniaresearch.ucsd.edu/
   - name: Marie-Abèle Bind 
-    url: https://scholar.google.com/citations?user=gyPCRcEAAAAJ&hl=fr
-    affiliation: 	Massachusetts General Hospital
-    affiliation_url: https://scholar.google.com/citations?user=gyPCRcEAAAAJ&hl=fr
+    url: https://scholar.harvard.edu/marie-abele
+    affiliation: Biostatistics Center, Massachusetts General Hospital
+    affiliation_url: https://biostatistics.massgeneral.org/faculty/marie-abele-bind-phd/
   - name: Léo Zabrocki 
-    url: https://www.parisschoolofeconomics.eu/en/
+    url: https://lzabrocki.github.io/
     affiliation: Paris School of Economics
-    affiliation_url: https://www.parisschoolofeconomics.eu/en/
+    affiliation_url: https://www.parisschoolofeconomics.eu/fr/zabrocki-leo/
 date: "`r Sys.Date()`"
 output: 
     distill::distill_article:
@@ -25,7 +25,15 @@ editor_options:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(message = FALSE, warning = FALSE)
+# code chunk option
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  layout = "l-body-outset",
+  dev = "CairoPNG",
+  dpi = 400
+)
 ```
 
 <style>
@@ -46,7 +54,7 @@ To reproduce exactly the `4_propensity_score_matching.html` document, we first n
 
 Once everything is set up, we load the following packages:
 
-```{r, echo = TRUE}
+```{r}
 # load required packages
 library(knitr) # for creating the R Markdown document
 library(here) # for files paths organization
@@ -62,13 +70,11 @@ library(DT) # for displaying the data as tables
 
 We load our custom `ggplot2` theme for graphs:
 
-```{r, echo = TRUE}
+```{r}
 # load ggplot custom theme
-source(here::here(
-  "2.scripts",
-  "functions",
-  "script_theme_tufte.R"
-))
+source(here::here("2.scripts",
+                  "functions",
+                  "script_theme_tufte.R"))
 # define nice colors
 my_blue <- "#0081a7"
 my_orange <- "#fb8500"
@@ -76,7 +82,7 @@ my_orange <- "#fb8500"
 
 We finally load the data:
 
-```{r, echo = TRUE}
+```{r}
 # load the data
 data <-
   readRDS(here::here("1.data", "simulated_environmental_data.rds")) %>%
@@ -90,7 +96,7 @@ As a reminder, there are `r nrow(data %>% filter(heat_wave==1))` days where an h
 
 We first implement below a propensity score matching procedure where:
 
-*  each day with an heat wave is matched to the most similar day without heat wave (1:1 nearest neighbor matching without replacement)
+* each day with an heat wave is matched to the most similar day without heat wave (1:1 nearest neighbor matching without replacement)
 * the distance metric used for the matching is the propensity score which is predicted using a logistic model where we regress the heat wave dummy on its three lags, the three lags of ozone, nitrogen dioxide and its three lags, the relative humidity, the calendar indicators for the day of the week, the week and the year.
 
 We vary the matching distance to see how covariates balance change:
@@ -106,11 +112,14 @@ We finally estimate the treatment effect.
 
 We first match each treated unit to its closest control unit without any caliper using the `matchit()` function:
 
-```{r, echo = TRUE}
+```{r}
 # match without caliper
 matching_ps_no_calliper <-
   matchit(
-    heat_wave ~ heat_wave_lag_1 + heat_wave_lag_2 + heat_wave_lag_3 + o3_lag_1 + o3_lag_2 + o3_lag_3 + no2 + no2_lag_1 + no2_lag_2 + no2_lag_3 + humidity_relative + month + week + year,
+    heat_wave ~ heat_wave_lag_1 + heat_wave_lag_2 + heat_wave_lag_3 + 
+      o3_lag_1 + o3_lag_2 + o3_lag_3 + 
+      no2 + no2_lag_1 + no2_lag_2 + no2_lag_3 + 
+      humidity_relative + month + week + year,
     data = data
   )
 
@@ -120,9 +129,9 @@ matching_ps_no_calliper
 
 The output of the matching procedure indicates us the method (1:1 nearest neighbor matching without replacement) and the distance (propensity score) we used. It also tells us how many treated units were matched: `r matching_ps_no_calliper[["nn"]][3]` (all treated units were matched). We assess how covariates balance has improved by comparing the distribution of propensity scores before and after matching: 
 
-```{R, echo=TRUE, layout="l-body-outset", fig.width = 10, fig.height = 6, dev = "CairoPNG"}
+```{r, fig.width = 10, fig.height = 6, code_folding="Please show me the code!"}
 # distribution of propensity scores
-bal.plot(
+graph_propensity_score_distribution_1 <- bal.plot(
   matching_ps_no_calliper,
   var.name = "distance",
   which = "both",
@@ -131,13 +140,34 @@ bal.plot(
 ) +
   ggtitle("Distribution of the Propensity Score Before and After Matching") +
   xlab("Propensity Scores") +
-  scale_fill_manual(name = "Group:", values = c(my_orange, my_blue), labels = c("Days without Heat Waves", "Days with Heat Waves")) +
+  scale_fill_manual(
+    name = "Group:",
+    values = c(my_orange, my_blue),
+    labels = c("Days without Heat Waves", "Days with Heat Waves")
+  ) +
   theme_tufte()
+
+# display the graph
+graph_propensity_score_distribution_1
+
+# save the graph
+ggsave(
+  graph_propensity_score_distribution_1,
+  filename = here::here(
+    "3.outputs",
+    "2.graphs",
+    "graph_propensity_score_distribution_1.pdf"
+  ),
+  width = 16,
+  height = 10,
+  units = "cm",
+  device = cairo_pdf
+)
 ```
 
 We see on this graph that propensity scores distribution for the two groups better overlap after matching. We can also evaluate the covariates balance using the `love.plot()` function from the cobalt package and the standardized mean difference as the summary statistic:
 
-```{R, echo=TRUE, layout="l-body-outset", fig.width = 8, fig.height = 8, dev = "CairoPNG"}
+```{r, fig.width = 8, fig.height = 8, code_folding="Please show me the code!"}
 # first we nicely label covariates
 cov_labels <- c(
   heat_wave_lag_1 = "Heat Wave t-1",
@@ -189,7 +219,7 @@ cov_labels <- c(
 )
 
 # make the love plot
-love.plot(
+graph_love_plot_ps_1 <- love.plot(
   matching_ps_no_calliper,
   drop.distance = TRUE,
   abs = TRUE,
@@ -202,7 +232,24 @@ love.plot(
   colors = c(my_orange, my_blue)
 ) +
   xlab("Absolute Standardized mean Differences") +
-theme_tufte()
+  theme_tufte()
+
+# display the graph
+graph_love_plot_ps_1
+
+# save the graph
+ggsave(
+  graph_love_plot_ps_1,
+  filename = here::here(
+    "3.outputs",
+    "2.graphs",
+    "graph_love_plot_ps_1.pdf"
+  ),
+  width = 20,
+  height = 15,
+  units = "cm",
+  device = cairo_pdf
+)
 ```
 
 On this graph, we can see that for most covariates balance has improved after matching---yet, for few covariates, the standardized mean difference has increased.
@@ -210,11 +257,14 @@ On this graph, we can see that for most covariates balance has improved after ma
 
 Until now, we matched each treated unit to its closest control unit: we could however make sure that a treated unit is not matched to a control unit which is too much different. We do so by setting a caliper, the maximum distance in terms of proposenstiy score standard deviation allows between a treated and control. We below implement the same propensity score matching but with a caliper of 0.5:
 
-```{r, echo = TRUE}
+```{r}
 # match without caliper
 matching_ps_w_calliper <-
   matchit(
-    heat_wave ~ heat_wave_lag_1 + heat_wave_lag_2 + heat_wave_lag_3 + o3_lag_1 + o3_lag_2 + o3_lag_3 + no2 + no2_lag_1 + no2_lag_2 + no2_lag_3 + humidity_relative + month + week + year,
+    heat_wave ~ heat_wave_lag_1 + heat_wave_lag_2 + heat_wave_lag_3 + 
+      o3_lag_1 + o3_lag_2 + o3_lag_3 + 
+      no2 + no2_lag_1 + no2_lag_2 + no2_lag_3 + 
+      humidity_relative + month + week + year,
     caliper = 0.1,
     data = data
   )
@@ -225,9 +275,9 @@ matching_ps_w_calliper
 
 Compared to the matching without caliper, there are now `r matching_ps_w_calliper[["nn"]][3]`` matched treated units. We can check whether the propensity score distributions overlap better:
 
-```{R, echo=TRUE, layout="l-body-outset", fig.width = 10, fig.height = 6, dev = "CairoPNG"}
+```{r, fig.width = 10, fig.height = 6, code_folding="Please show me the code!"}
 # distribution of propensity scores
-bal.plot(
+graph_propensity_score_distribution_2 <- bal.plot(
   matching_ps_w_calliper,
   var.name = "distance",
   which = "both",
@@ -236,15 +286,35 @@ bal.plot(
 ) +
   ggtitle("Distribution of the Propensity Score Before and After Matching") +
   xlab("Propensity Scores") +
-  scale_fill_manual(name = "Group:", values = c(my_orange, my_blue), labels = c("Days without Heat Waves", "Days with Heat Waves")) +
+  scale_fill_manual(
+    name = "Group:",
+    values = c(my_orange, my_blue),
+    labels = c("Days without Heat Waves", "Days with Heat Waves")
+  ) +
   theme_tufte()
+
+# display the graph
+graph_propensity_score_distribution_2
+
+# save the graph
+ggsave(
+  graph_propensity_score_distribution_2,
+  filename = here::here(
+    "3.outputs",
+    "2.graphs",
+    "graph_propensity_score_distribution_2.pdf"
+  ),
+  width = 16,
+  height = 10,
+  units = "cm",
+  device = cairo_pdf
+)
 ```
 
 It seems to be better than the matching without caliper. We can also evaluate how each covariate balance has improved with a love plot:
 
-```{R, echo=TRUE, layout="l-body-outset", fig.width = 8, fig.height = 8, dev = "CairoPNG"}
+```{r, fig.width = 8, fig.height = 8}
 # make the love plot
-
 love.plot(
   heat_wave ~ heat_wave_lag_1 + heat_wave_lag_2 + heat_wave_lag_3 + o3_lag_1 + o3_lag_2 + o3_lag_3 + no2 + no2_lag_1 + no2_lag_2 + no2_lag_3 + humidity_relative + month + week + year,
   data = data,
@@ -271,14 +341,14 @@ On this graph, it is not clear to see whether covariates balance has really incr
 
 We now move to the analysis of the matched datasets using a simple regression model where we first regression the YoLL on the treatment indicator. We start with the matched data resulting from the propensity score without caliper:
 
-```{R, echo=TRUE}
+```{r}
 # we retrieve the matched data
 data_ps_no_calliper <- match.data(matching_ps_no_calliper)
 
 # we fit the regression model
 model_ps_no_calliper <- lm(y_obs ~ heat_wave,
-                               data = data_ps_no_calliper,
-                               weights = weights)
+                           data = data_ps_no_calliper,
+                           weights = weights)
 
 # retrieve the estimate and 95% ci
 results_ps_no_calliper <- tidy(coeftest(
@@ -304,7 +374,7 @@ results_ps_no_calliper %>%
 
 We find that the average effect on the treated is equal to +`r results_ps_no_calliper$estimate` years of life lost. The 95% confidence interval is consistent with effects ranging from +`r results_ps_no_calliper$conf.low` up to +`r results_ps_no_calliper$conf.high`. The estimate of the ATT is still far from the the true effect of +230 YoLL. If we want to increase the precision of our estimate and remove any remaining imbalance in covariates, we can also run a multivariate regression. We adjust below for the same variables used in the estimation of propensity scores:
 
-```{R, echo=TRUE}
+```{r}
 # we fit the regression model
 model_ps_no_calliper_w_cov <-
   lm(
@@ -340,7 +410,7 @@ We find that the average effect on the treated is equal to +`r results_ps_no_cal
 
 We also estimate the treatment effect for the matched dataset resulting from the matching procedure with a caliper. It is very important to note that the target causal estimand is not anymore the the average treatment on the treated as not all treated units could be matched to similar control units. To know the true causal effect for the match data, we compute the mean difference in potential outcomes:
 
-```{R, echo=TRUE}
+```{r}
 # we retrieve the matched data
 data_ps_w_calliper <- match.data(matching_ps_w_calliper)
 
@@ -351,11 +421,11 @@ true_att_ps__w_calliper <-
 
 The true effect for this match data is equal to +`r true_att_ps__w_calliper` YoLL, which is different for the true effect on **all** treated units. If we estimate this effect with a simple linear regression model, we get:
 
-```{R, echo=TRUE}
+```{r}
 # we fit the regression model
 model_ps_w_calliper <- lm(y_obs ~ heat_wave,
-                               data = data_ps_w_calliper,
-                               weights = weights)
+                          data = data_ps_w_calliper,
+                          weights = weights)
 
 # retrieve the estimate and 95% ci
 results_ps_w_calliper <- tidy(coeftest(
@@ -381,7 +451,7 @@ results_ps_w_calliper %>%
 
 The estimated is exactly equal to the true effect of +`r true_att_ps__w_calliper`. The 95% confidence interval is consistent with effects ranging from +`r results_ps_w_calliper$conf.low` up to +`r results_ps_w_calliper$conf.high`. We finally run the regression model where we adjust for covariates:
 
-```{R, echo=TRUE}
+```{r}
 # we fit the regression model
 model_ps_w_calliper_w_cov <-
   lm(
