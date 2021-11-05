@@ -111,6 +111,39 @@ The dataset contains `nrow(data)` daily observations. We provide below the defin
 * `no2`: daily average concentration of nitrogen dioxide ($\mu g/m^3$).
 * The rest of the variables are dummy indicators for the week of the day, the week of the year, the month and the year.
 
+
+We plot below the distribution of heat waves over time:
+
+```{r, fig.width=8, fig.height=5, code_folding="Please show me the code!"}
+# make stripes graph
+graph_stripes_treatment <- data %>%
+  mutate(is_treated = ifelse(heat_wave == 1, "Treated", "Control")) %>%
+  ggplot(., aes(x = date, y = 1, fill = is_treated)) +
+  geom_tile() +
+  scale_y_continuous(expand = c(0, 0)) +
+  facet_wrap( ~ year, scales = "free") +
+  scale_fill_manual(name = "Daily Observations:", values = c(my_blue, my_orange)) +
+  xlab("Date") + ylab("") +
+  theme_tufte() +
+  theme(axis.ticks.y = element_blank(),
+        axis.text.y = element_blank())
+
+# display the graph
+graph_stripes_treatment
+
+# save the graph
+ggsave(
+  graph_stripes_treatment,
+  filename = here::here("3.outputs", "2.graphs", "graph_stripes_treatment.pdf"),
+  width = 30,
+  height = 15,
+  units = "cm",
+  device = cairo_pdf
+)
+```
+
+We plot below the density distributions of variables according to the heat wave status:
+
 ```{r, fig.width=10, fig.height=5, code_folding="Please show me the code!"}
 # create the graph
 graph_cov_densities <- data %>%
@@ -165,42 +198,13 @@ graph_cov_densities
 ggsave(
   graph_cov_densities,
   filename = here::here("3.outputs", "2.graphs", "graph_cov_densities.pdf"),
-  width = 15,
-  height = 8,
+  width = 20,
+  height = 10,
   units = "cm",
   device = cairo_pdf
 )
 ```
 
-
-
-```{r, fig.width=8, fig.height=5, code_folding="Please show me the code!"}
-# make stripes graph
-graph_stripes_treatment <- data %>%
-  mutate(is_treated = ifelse(heat_wave == 1, "Treated", "Control")) %>%
-  ggplot(., aes(x = date, y = 1, fill = is_treated)) +
-  geom_tile() +
-  scale_y_continuous(expand = c(0, 0)) +
-  facet_wrap( ~ year, scales = "free") +
-  scale_fill_manual(name = "Daily Observations:", values = c(my_blue, my_orange)) +
-  xlab("Date") + ylab("") +
-  theme_tufte() +
-  theme(axis.ticks.y = element_blank(),
-        axis.text.y = element_blank())
-
-# display the graph
-graph_stripes_treatment
-
-# save the graph
-ggsave(
-  graph_stripes_treatment,
-  filename = here::here("3.outputs", "2.graphs", "graph_stripes_treatment.pdf"),
-  width = 15,
-  height = 8,
-  units = "cm",
-  device = cairo_pdf
-)
-```
 
 # Simulating Potential Outcomes
 
