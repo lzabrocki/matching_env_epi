@@ -23,7 +23,15 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(message = FALSE, warning = FALSE)
+# code chunk option
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  layout="l-body-outset",
+  dev = "CairoPNG",
+  dpi = 600
+)
 ```
 
 <style>
@@ -44,7 +52,7 @@ To reproduce exactly the `2_script_outcome_regression_analysis.html` document, w
 
 Once everything is set up, we load the following packages:
 
-```{r, echo = TRUE}
+```{r}
 # load required packages
 library(knitr) # for creating the R Markdown document
 library(here) # for files paths organization
@@ -56,13 +64,11 @@ library(DT) # for displaying the data as tables
 
 We finally load our custom `ggplot2` theme for graphs:
 
-```{r, echo = TRUE}
+```{r}
 # load ggplot custom theme
-source(here::here(
-  "2.scripts",
-  "functions",
-  "script_theme_tufte.R"
-))
+source(here::here("2.scripts",
+                  "functions",
+                  "script_theme_tufte.R"))
 # define nice colors
 my_blue <- "#0081a7"
 my_orange <- "#fb8500"
@@ -72,7 +78,7 @@ my_orange <- "#fb8500"
 
 We load the simulated environmental data:
 
-```{r, echo = TRUE}
+```{r}
 # load the data
 data <-
   readRDS(here::here("1.data", "simulated_environmental_data.rds"))
@@ -82,7 +88,7 @@ data <-
 
 To explore whether heat waves lead to an increase in YoLL, we could first compare the distribution of the outcome between days with heat waves and days without heat waves:
 
-```{R, echo=TRUE, fig.align = "center", dev = "CairoPNG"}
+```{r}
 data %>%
   # recode heat_wave variable
   mutate(heat_wave = ifelse(heat_wave == 1, "Days with Heat Wave", "Days without Heat Wave")) %>%
@@ -116,7 +122,7 @@ $\text{YoLL}_{t} = \alpha + \beta\text{HW}_{t} + \epsilon_{t}$
 
 where $t$ is the time index, $\beta$ is the coefficient of interest and $\epsilon$ the error term. We implement this model in R with the following code:
 
-```{r, echo = TRUE}
+```{r}
 # run the model and clean ouput
 output_crude_regression <- data %>%
   lm(y_obs ~ heat_wave, data = .) %>%
@@ -147,7 +153,7 @@ $\text{YoLL}_{t} = \alpha + \beta\text{HW}_{t} + \textbf{WP}_{t}\phi + \textbf{C
 
 where $WP$ is the vector of weather and air pollutants variables and $C_{t}$ the vector of calendar indicators. We implement this model in R with the following code:
 
-```{r, echo = TRUE}
+```{r}
 # run the model and clean ouput
 output_adjusted_regression <- data %>%
   lm(y_obs ~ heat_wave + humidity_relative + o3 + no2 + weekday + month + as.factor(year),

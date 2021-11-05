@@ -3,10 +3,18 @@ title: "Data Wrangling"
 description: |
   Cleaning Marie-Abèle and Tarik's Data.
 author:
+  - name: Tarik Benmarhnia
+    url: https://profiles.ucsd.edu/tarik.benmarhnia
+    affiliation: UCSD & Scripps Institute
+    affiliation_url: https://benmarhniaresearch.ucsd.edu/
+  - name: Marie-Abèle Bind 
+    url: https://scholar.harvard.edu/marie-abele
+    affiliation: Biostatistics Center, Massachusetts General Hospital
+    affiliation_url: https://biostatistics.massgeneral.org/faculty/marie-abele-bind-phd/
   - name: Léo Zabrocki 
-    url: https://www.parisschoolofeconomics.eu/en/
+    url: https://lzabrocki.github.io/
     affiliation: Paris School of Economics
-    affiliation_url: https://www.parisschoolofeconomics.eu/en/
+    affiliation_url: https://www.parisschoolofeconomics.eu/fr/zabrocki-leo/
 date: "`r Sys.Date()`"
 output: 
     distill::distill_article:
@@ -20,7 +28,15 @@ text-align: justify}
 </style>
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(message = FALSE, warning = FALSE)
+# code chunk option
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  layout = "l-body-outset",
+  dev = "CairoPNG",
+  dpi = 600
+)
 ```
 
 In this document, I am cleaning the `withoutcomes.csv` file shared by Tarik. **Should you find coding errors, please do not hesitate to contact me at leo.zabrocki@psemail.eu**
@@ -29,7 +45,7 @@ In this document, I am cleaning the `withoutcomes.csv` file shared by Tarik. **S
 
 The following packages are required to clean the data:
 
-```{r, echo = TRUE}
+```{r}
 # load required packages
 library(here) # for files paths organization
 library(tidyverse) # for data manipulation and visualization
@@ -39,7 +55,7 @@ library(lubridate) # for dealing with dates
 
 We load the data:
 
-```{r, echo = TRUE}
+```{r}
 # load the data
 data <-
   read.csv(here::here("1.data", "withoutcomes.csv"))
@@ -51,13 +67,13 @@ data <-
 
 We clean and create time indicators:
 
-```{r, echo = TRUE}
+```{r}
 # create relevant time indicators
 data <- data %>%
-# clean the date variable
+  # clean the date variable
   rename(date = "ï..date") %>%
   mutate(date = lubridate::mdy(date)) %>%
-# add weekday, week, month and year indicators
+  # add weekday, week, month and year indicators
   mutate(
     weekday = lubridate::wday(date, label = TRUE, abbr = FALSE) %>% str_to_lower(.),
     week = lubridate::week(date),
@@ -68,7 +84,7 @@ data <- data %>%
 
 We add dummy variables for each time indicator:
 
-```{r, echo = TRUE}
+```{r}
 # add dummies
 data <- data %>%
   fastDummies::dummy_cols(., select_columns = c("weekday", "week", "month", "year"))
@@ -78,7 +94,7 @@ data <- data %>%
 
 We rename weather variables:
 
-```{r, echo = TRUE}
+```{r}
 # rename air pollutant variables
 data <- data %>%
   rename(
@@ -98,7 +114,7 @@ data <- data %>%
 
 We rename air pollutant variables:
 
-```{r, echo = TRUE}
+```{r}
 # rename air pollutant variables
 data <- data %>%
   rename(
@@ -115,7 +131,7 @@ data <- data %>%
 
 We rename the years of life lost variable:
 
-```{r, echo = TRUE}
+```{r}
 # rename years of life lost variable
 data <- data %>%
   rename("yll" = "YLL")
@@ -125,7 +141,7 @@ data <- data %>%
 
 We reorder and select relevant variables:
 
-```{r, echo = TRUE}
+```{r}
 # reorder variables
 data <- data %>%
   select(
@@ -164,9 +180,9 @@ data <- data %>%
   )
 ```    
 
-In her script, M-A drops units with missing observations:
+In her script, Marie-Abèle drops units with missing observations:
 
-```{r, echo = TRUE}
+```{r}
 # drop observations with missing values
 data <- data %>%
   drop_na()
@@ -174,7 +190,7 @@ data <- data %>%
 
 We add again the unit id variable:
 
-```{r, echo = TRUE}
+```{r}
 # add unit id
 data <- data %>%
   mutate(id = 1:n())
@@ -182,7 +198,7 @@ data <- data %>%
 
 We finally save the data:
 
-```{r, echo = TRUE}
+```{r}
 # save the data
 saveRDS(data, here::here("1.data", "raw_environmental_data.rds"))
 ```    
