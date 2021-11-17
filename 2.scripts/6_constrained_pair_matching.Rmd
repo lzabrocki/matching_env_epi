@@ -3,18 +3,18 @@ title: "Constrained Pair Matching"
 description: |
   Detailled Script.
 author:
-  - name: Tarik Benmarhnia 
+  - name: Tarik Benmarhnia
     url: https://profiles.ucsd.edu/tarik.benmarhnia
-    affiliation: University of California San Diego
-    affiliation_url: https://profiles.ucsd.edu/tarik.benmarhnia
+    affiliation: UCSD & Scripps Institute
+    affiliation_url: https://benmarhniaresearch.ucsd.edu/
   - name: Marie-Abèle Bind 
-    url: https://scholar.google.com/citations?user=gyPCRcEAAAAJ&hl=fr
-    affiliation: 	Massachusetts General Hospital
-    affiliation_url: https://scholar.google.com/citations?user=gyPCRcEAAAAJ&hl=fr
+    url: https://scholar.harvard.edu/marie-abele
+    affiliation: Biostatistics Center, Massachusetts General Hospital
+    affiliation_url: https://biostatistics.massgeneral.org/faculty/marie-abele-bind-phd/
   - name: Léo Zabrocki 
-    url: https://www.parisschoolofeconomics.eu/en/
+    url: https://lzabrocki.github.io/
     affiliation: Paris School of Economics
-    affiliation_url: https://www.parisschoolofeconomics.eu/en/
+    affiliation_url: https://www.parisschoolofeconomics.eu/fr/zabrocki-leo/
 date: "`r Sys.Date()`"
 output: 
     distill::distill_article:
@@ -25,7 +25,15 @@ editor_options:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(message = FALSE, warning = FALSE)
+# code chunk option
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  layout = "l-body-outset",
+  dev = "CairoPNG",
+  dpi = 400
+)
 ```
 
 <style>
@@ -33,20 +41,21 @@ body {
 text-align: justify}
 </style>
 
-In this document, we provide all steps and R codes required to estimate the effect of heat waves of the number of years of life lost (YoLL) using a recently developed constrained pair matching algorithm. Compared to propensity score matching, we can choose the maximum distance allowed between treated and control units for each covariate. The coding procedure is a bit more involved as it has not been formatted as an R package yet. **Should you have any questions, need help to reproduce the analysis or find coding errors, please do not hesitate to contact us at leo.zabrocki@psemail.eu**
+
+In this document, we provide all steps and R codes required to estimate the effect of heat waves of the number of years of life lost (YoLL) using a recently developed constrained pair matching algorithm. Compared to propensity score matching, we can choose the maximum distance allowed between treated and control units for each covariate. The coding procedure is a bit more involved as it has not been formatted in an R package yet. **Should you have any questions, need help to reproduce the analysis or find coding errors, please do not hesitate to contact us at leo.zabrocki@psemail.eu**
 
 # Required Packages and Data Loading
 
-To reproduce exactly the `5_constrained_pair_matching.html` document, we first need to have installed:
+To reproduce exactly the `6_constrained_pair_matching.html` document, we first need to have installed:
 
 * the [R](https://www.r-project.org/) programming language 
-* [RStudio](https://rstudio.com/), an integrated development environment for R, which will allow you to knit the `5_constrained_pair_matching.Rmd` file and interact with the R code chunks
+* [RStudio](https://rstudio.com/), an integrated development environment for R, which will allow you to knit the `6_constrained_pair_matching.Rmd` file and interact with the R code chunks
 * the [R Markdown](https://rmarkdown.rstudio.com/) package
 * and the [Distill](https://rstudio.github.io/distill/) package which provides the template for this document. 
 
 Once everything is set up, we load the following packages:
 
-```{r, echo = TRUE}
+```{r}
 # load required packages
 library(knitr) # for creating the R Markdown document
 library(here) # for files paths organization
@@ -63,14 +72,14 @@ library(DT) # for displaying the data as tables
 
 We also have to load the `script_time_series_matching_function.R` located in the **functions** folder and which provides the functions used for matching time series:
 
-```{r, echo = TRUE}
+```{r}
 # load matching functions
 source(here::here("2.scripts", "functions", "script_time_series_matching_function.R"))
 ```
 
 We load our custom `ggplot2` theme for graphs:
 
-```{r, echo = TRUE}
+```{r}
 # load ggplot custom theme
 source(here::here(
   "2.scripts",
@@ -84,7 +93,7 @@ my_orange <- "#fb8500"
 
 We finally load the data:
 
-```{r, echo = TRUE}
+```{r}
 # load the data
 matching_data <-
   readRDS(here::here("1.data", "simulated_environmental_data.rds")) %>%
@@ -103,7 +112,7 @@ We defined our experiment such that:
 
 Below are the required steps to define treatment variable (`is_treated`) and select the corresponding treated and control units:
 
-```{r, echo=TRUE}
+```{r}
 # define treatment variable
 matching_data <- matching_data %>%
   mutate(is_treated = ifelse(heat_wave == 1, TRUE, FALSE))
@@ -117,7 +126,7 @@ N_control = nrow(control_units)
 
 There are `r N_treated` treated units and  `r N_control` control units. We display the distribution of of treated and control units through time:
 
-```{r, echo = TRUE, fig.width=8, fig.height=5, layout="l-body-outset", dev = "CairoPNG"}
+```{r, fig.width=8, fig.height=5, code_folding="Please show me the code!"}
 # make stripes graph
 matching_data %>%
   mutate(is_treated = ifelse(is_treated == "TRUE", "Treated", "Control")) %>%
@@ -132,10 +141,9 @@ matching_data %>%
         axis.text.y = element_blank())
 ```
 
-
 We save the `matching_data`:
 
-```{r, echo=TRUE}
+```{r}
 saveRDS(matching_data, here::here("3.outputs", "1.data", "constrained_pair_matching", "matching_data.rds"))
 ```
 
@@ -143,7 +151,7 @@ saveRDS(matching_data, here::here("3.outputs", "1.data", "constrained_pair_match
 
 Below is the code to define the relevant thresholds:
 
-```{r, echo=TRUE}
+```{r}
 # we create the scaling list as it is needed for running the algorithm
 # but we do not use it
 
@@ -181,13 +189,13 @@ thresholds$no2 = 9
 thresholds$no2_lag_1 = 9
 thresholds$no2_lag_2 = 9
 thresholds$no2_lag_3 = 9
-````
+```
 
 ### Running the Matching Procedure
 
 We compute discrepancy matrix and run the matching algorithm:
 
-```{R, echo=TRUE}
+```{r}
 # first we compute the discrepancy matrix
 discrepancies = discrepancyMatrix(treated_units, control_units, thresholds, scaling)
 
@@ -208,11 +216,11 @@ for (i in 1:length(groups_labels)){
   IDs = names(matched_groups)[(matched_groups==groups_labels[i])]
   groups_list[[i]] = as.Date(IDs[!is.na(IDs)])
 }
-````
+```
 
 For somes cases, several controls units were matched to a treatment unit. We use the `igraph` package to force pair matching via bipartite maximal weighted matching. Below is the required code:
 
-```{R, echo=TRUE}
+```{r}
 # we build a bipartite graph with one layer of treated nodes, and another layer of control nodes.
 # the nodes are labeled by integers from 1 to (N_treated + N_control)
 # by convention, the first N_treated nodes correspond to the treated units, and the remaining N_control
@@ -263,25 +271,25 @@ matched_pairs <- enframe(pairs_list) %>%
   unnest(cols = "value") %>%
   rename(pair_number = name,
          date = value)
-````
+```
 
 The hypothetical experiment we set up had `r N_treated` treated units and `r N_control` control units. The matching procedure results in `r N_matched` matched treated units.
 
 We finally merge the `matched_pairs` with the `matching_matching_data` to retrieve covariates values for the matched pairs and save the data:
 
-```{R, echo=TRUE}
+```{r}
 # select the matched data for the analysis
 final_data <- left_join(matched_pairs, matching_data, by = "date")
 
 # save the matched data
 saveRDS(final_data, here::here("3.outputs", "1.data", "constrained_pair_matching", "matched_data.Rds"))
-````
+```
 
 # Checking Covariates Balance Improvement
 
-We bind the matching and matched data together:
+We first bind the matching and matched data together:
 
-```{R, echo = TRUE}
+```{r}
 # bind the two datasets
 matching_data <- matching_data %>%
   mutate(dataset = "Initial Data")
@@ -294,16 +302,18 @@ data <- bind_rows(matching_data, final_data)
 
 We change labels of the `is_treated` variable :
 
-```{R, echo = TRUE}
+```{r}
 data <- data %>%
   mutate(is_treated = ifelse(is_treated == "TRUE", "True", "False"))
 ```
 
-Love Plots
+We then assess covariates balance using love plots:
 
 ### Continuous Covariates
 
-```{R, echo=TRUE, layout="l-body-outset", fig.width=8, fig.height=4, dev = "CairoPNG"}
+For continuous covariates, we compute and plot the standardized mean differences:
+
+```{r, fig.width=8, fig.height=4, code_folding="Please show me the code!"}
 # compute figures for the love plot
 data_cov_continuous <- data %>%
   select(dataset, is_treated, contains("humidity_relative"), o3_lag_1:o3_lag_3, no2:no2_lag_3) %>%
@@ -336,7 +346,7 @@ data_love_continuous <- left_join(data_abs_difference_continuous, data_sd_contin
   select(-c(abs_difference,sd_treatment))
 
 # make the graph
-ggplot(data_love_continuous, aes(y = time, x = standardized_difference, colour = fct_rev(dataset), shape = fct_rev(dataset))) +
+graph_cpm_love_plot_1 <- ggplot(data_love_continuous, aes(y = time, x = standardized_difference, colour = fct_rev(dataset), shape = fct_rev(dataset))) +
   geom_vline(xintercept = 0, size = 0.3) +
   geom_vline(xintercept = 0.1, color = "black", linetype = "dashed") +
   geom_point(size = 4, alpha = 0.8) +
@@ -347,13 +357,30 @@ ggplot(data_love_continuous, aes(y = time, x = standardized_difference, colour =
   xlab("Standardized Mean Differences") +
   ylab("Day") + 
   theme_tufte()
+
+# display the graph
+graph_cpm_love_plot_1
+
+# save the graph
+ggsave(
+  graph_cpm_love_plot_1,
+  filename = here::here(
+    "3.outputs",
+    "2.graphs",
+    "graph_cpm_love_plot_1.pdf"
+  ),
+  width = 20,
+  height = 15,
+  units = "cm",
+  device = cairo_pdf
+)
 ```
 
 ### Calendar Indicators
 
-Create the relevant data:
+For calendar indicators, we compute and plot the absolute differences in proportions:
 
-```{R, echo=TRUE}
+```{r}
 # compute figures for the love plot
 data_calendar <- data %>%
   mutate(weekday = lubridate::wday(date, abbr = FALSE, label = TRUE)) %>%
@@ -379,9 +406,9 @@ data_calendar <- data %>%
 
 Plot for days of the week:
 
-```{R, echo=TRUE, message = FALSE, warning = FALSE, layout="l-body-outset", fig.width=10, fig.height=5, dev = "CairoPNG"}
+```{r, fig.width=10, fig.height=5, code_folding="Please show me the code!"}
 # graph for weekdays
-data_calendar %>%
+graph_cpm_love_plot_2 <- data_calendar %>%
   filter(calendar_variable == "Day of the Week") %>%
   mutate(
     values = fct_relevel(
@@ -409,13 +436,30 @@ data_calendar %>%
   ylab("") +
   theme_tufte() +
   theme(axis.text.x = element_text(margin = ggplot2::margin(t = 0, unit = "cm")))
+
+# display the graph
+graph_cpm_love_plot_2
+
+# save the graph
+ggsave(
+  graph_cpm_love_plot_2,
+  filename = here::here(
+    "3.outputs",
+    "2.graphs",
+    "graph_cpm_love_plot_2.pdf"
+  ),
+  width = 20,
+  height = 15,
+  units = "cm",
+  device = cairo_pdf
+)
 ```
 
 Plot for months:
 
-```{R, echo=TRUE, message = FALSE, warning = FALSE, layout="l-body-outset", fig.width=8, fig.height=4, dev = "CairoPNG"}
+```{r, fig.width=8, fig.height=4, code_folding="Please show me the code!"}
 # graph for month
-data_calendar %>%
+graph_cpm_love_plot_3 <- data_calendar %>%
   filter(calendar_variable == "Month") %>%
   mutate(
     values = fct_relevel(
@@ -449,13 +493,30 @@ data_calendar %>%
   ylab("") +
   theme_tufte() +
   theme(axis.text.x = element_text(margin = ggplot2::margin(t = 0, unit = "cm")))
+
+# display the graph
+graph_cpm_love_plot_3
+
+# save the graph
+ggsave(
+  graph_cpm_love_plot_3,
+  filename = here::here(
+    "3.outputs",
+    "2.graphs",
+    "graph_cpm_love_plot_3.pdf"
+  ),
+  width = 20,
+  height = 15,
+  units = "cm",
+  device = cairo_pdf
+)
 ```
 
 Plot for years:
 
-```{R, echo=TRUE, message = FALSE, warning = FALSE, layout="l-body-outset", fig.width=10, fig.height=5, dev = "CairoPNG"}
+```{r, fig.width=10, fig.height=5, code_folding="Please show me the code!"}
 # graph for year
-data_calendar %>%
+graph_cpm_love_plot_4 <- data_calendar %>%
   filter(calendar_variable == "Year") %>%
   ggplot(., aes(
     y = as.factor(as.numeric(values)),
@@ -472,12 +533,29 @@ data_calendar %>%
   ylab("") +
   theme_tufte() +
   theme(axis.text.x = element_text(margin = ggplot2::margin(t = 0, unit = "cm")))
+
+# display the graph
+graph_cpm_love_plot_4
+
+# save the graph
+ggsave(
+  graph_cpm_love_plot_4,
+  filename = here::here(
+    "3.outputs",
+    "2.graphs",
+    "graph_cpm_love_plot_4.pdf"
+  ),
+  width = 20,
+  height = 15,
+  units = "cm",
+  device = cairo_pdf
+)
 ```
 
 
 # Analysing Results
 
-Must be careful, only `r N_matched` treated units were matched. To know the true causal effect, we must compute the average difference in potential outcomes:
+We must be careful when we analyze the results as only `r N_matched` treated units were matched: the estimand is not longer the ATT. To know the true causal effect, we must compute the average difference in potential outcomes:
 
 ```{R, echo=TRUE}
 # compute the true effect for the data
@@ -517,4 +595,4 @@ results %>%
   kable(., align = c("l", "c", "c", "c"))
 ```
 
-We find that the average effect on the treated is equal to +`r results$estimate` years of life lost: the estimate is still very close to the true effect. The 95% confidence interval is consistent with effects ranging from +`r results$conf.low` up to +`r results$conf.high`.
+We find that the average effect on the treated is equal to +`r results$estimate` years of life lost: the estimate is equal to the true true effect. The 95% confidence interval is however wide and is consistent with effects ranging from +`r results$conf.low` up to +`r results$conf.high`.
