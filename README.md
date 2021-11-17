@@ -1,19 +1,14 @@
 # Matching Tutorial for Environmental Epidemiology
 
-Work in progress :hammer:.
-
-Current scripts added:
+This repo contains all R codes to reproduce the results found in our matching tutorial for environmental epidemiologists:
 
 1. Data Simulation
 2. Outcome Regression Analysis
 3. EDA Covariates Balance
-4. Propensity Score Analysis
-5. Constrained Pair Matching Analysis
+4. Propensity Score Matching Analysis
+5. Coarsened Exact Matching Analysis
+6. Constrained Pair Matching Analysis
 
 To display the scripts, you must download the .html file and then open it with your internet browser.
 
-To-Do List:
 
-* graphique des intervalles de confiances.
-* overall check de la ballance pour les différentes méthodes.
-* dans la papier, décrire les différentes approches de matching.
