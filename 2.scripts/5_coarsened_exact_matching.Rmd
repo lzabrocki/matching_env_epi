@@ -3,18 +3,18 @@ title: "Propensity Score Matching"
 description: |
   Detailled Script.
 author:
-  - name: Tarik Benmarhnia 
+  - name: Tarik Benmarhnia
     url: https://profiles.ucsd.edu/tarik.benmarhnia
-    affiliation: University of California San Diego
-    affiliation_url: https://profiles.ucsd.edu/tarik.benmarhnia
+    affiliation: UCSD & Scripps Institute
+    affiliation_url: https://benmarhniaresearch.ucsd.edu/
   - name: Marie-Abèle Bind 
-    url: https://scholar.google.com/citations?user=gyPCRcEAAAAJ&hl=fr
-    affiliation: 	Massachusetts General Hospital
-    affiliation_url: https://scholar.google.com/citations?user=gyPCRcEAAAAJ&hl=fr
+    url: https://scholar.harvard.edu/marie-abele
+    affiliation: Biostatistics Center, Massachusetts General Hospital
+    affiliation_url: https://biostatistics.massgeneral.org/faculty/marie-abele-bind-phd/
   - name: Léo Zabrocki 
-    url: https://www.parisschoolofeconomics.eu/en/
+    url: https://lzabrocki.github.io/
     affiliation: Paris School of Economics
-    affiliation_url: https://www.parisschoolofeconomics.eu/en/
+    affiliation_url: https://www.parisschoolofeconomics.eu/fr/zabrocki-leo/
 date: "`r Sys.Date()`"
 output: 
     distill::distill_article:
@@ -25,7 +25,15 @@ editor_options:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(message = FALSE, warning = FALSE)
+# code chunk option
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  layout = "l-body-outset",
+  dev = "CairoPNG",
+  dpi = 400
+)
 ```
 
 <style>
@@ -33,14 +41,14 @@ body {
 text-align: justify}
 </style>
 
-In this document, we provide all steps and R codes required to estimate the effect of heat waves of the number of years of life lost (YoLL) using propensity score matching. The implementation is done with the fantastic package [MatchIt](https://kosukeimai.github.io/MatchIt/index.html): do not hesitate to explore its very well-made documentation. We also rely on the [cobalt]()**Should you have any questions, need help to reproduce the analysis or find coding errors, please do not hesitate to contact us at leo.zabrocki@psemail.eu**
+In this document, we provide all steps and R codes required to estimate the effect of heat waves of the number of years of life lost (YoLL) using coarsened exact matching. The implementation is done with the fantastic package [MatchIt](https://kosukeimai.github.io/MatchIt/index.html): do not hesitate to explore its very well-made documentation. We also rely on the [cobalt](https://cran.r-project.org/web/packages/cobalt/vignettes/cobalt.html) for checking covariate balance. **Should you have any questions, need help to reproduce the analysis or find coding errors, please do not hesitate to contact us at leo.zabrocki@psemail.eu**
 
 # Required Packages and Data Loading
 
-To reproduce exactly the `4_propensity_score_matching.html` document, we first need to have installed:
+To reproduce exactly the `5_coarsened_exact_matching.html` document, we first need to have installed:
 
 * the [R](https://www.r-project.org/) programming language 
-* [RStudio](https://rstudio.com/), an integrated development environment for R, which will allow you to knit the `4_propensity_score_matching.Rmd` file and interact with the R code chunks
+* [RStudio](https://rstudio.com/), an integrated development environment for R, which will allow you to knit the `5_coarsened_exact_matching.Rmd` file and interact with the R code chunks
 * the [R Markdown](https://rmarkdown.rstudio.com/) package
 * and the [Distill](https://rstudio.github.io/distill/) package which provides the template for this document. 
 
@@ -84,88 +92,32 @@ data <-
   mutate_at(vars(week, year), ~ as.factor(.))
 ```
 
-As a reminder, there are `r nrow(data %>% filter(heat_wave==1))` days where an heat wave occurred and `r nrow(data %>% filter(heat_wave==0))` days without heat waves.
-
-# Genetic Matching
-
-```{r, echo = TRUE}
-# testing genetic matching
-matching_genetic <-
-  matchit(
-    heat_wave ~ heat_wave_lag_1 + heat_wave_lag_2 + heat_wave_lag_3 + o3_lag_1 + o3_lag_2 + o3_lag_3 + no2 + no2_lag_1 + no2_lag_2 + no2_lag_3 + humidity_relative + month + week + year,
-    method = "genetic",
-    pop.size = 300,
-    data = data
-  )
-
-# display summary of the procedure
-matching_genetic
-```
-
-```{R, echo=TRUE}
-# we retrieve the matched data
-data_genetic_matching <- match.data(matching_genetic)
-
-# we fit the regression model
-model_genetic_matching <-
-  lm(
-    y_obs ~ heat_wave + heat_wave_lag_1 + heat_wave_lag_2 + heat_wave_lag_3 + o3_lag_1 + o3_lag_2 + o3_lag_3 + no2 + no2_lag_1 + no2_lag_2 + no2_lag_3 + humidity_relative + month + week + year,
-    data = data_genetic_matching,
-    weights = weights
-  )
-
-# retrieve the estimate and 95% ci
-results_genetic_matching <- tidy(coeftest(
-  model_genetic_matching,
-  vcov. = vcovCL,
-  cluster = ~ subclass
-),
-conf.int = TRUE) %>%
-  filter(term == "heat_wave") %>%
-  select(term, estimate, conf.low, conf.high) %>%
-  mutate_at(vars(estimate:conf.high), ~ round(., 0))
-
-# display results
-results_genetic_matching %>%
-  rename(
-    "Term" = term,
-    "Estimate" = estimate,
-    "95% CI Lower Bound" = conf.low,
-    "95% CI Upper Bound" = conf.high
-  ) %>%
-  kable(., align = c("l", "c", "c", "c"))
-```
-
-We find that the average effect on the treated is equal to +`r results_genetic_matching$estimate` years of life lost. The 95% confidence interval is consistent with effects ranging from +`r results_genetic_matching$conf.low` up to +`r results_genetic_matching$conf.high`.
+As a reminder, there are `r nrow(data %>% filter(heat_wave==1))` days where an heat wave occurred and `r nrow(data %>% filter(heat_wave==0))` days without heat waves. The true average treatment effect on the treated is equal to +230 YoLL.
 
 # Coarsened Exact Matching
 
 Cutpoints:
 
 ```{R, echo=TRUE}
-data <-
-  readRDS(here::here("1.data", "simulated_environmental_data.rds")) %>%
-  # define week and year as factors
-  mutate_at(vars(week, year), ~ as.factor(.))
 
 data <- data %>%
   mutate(year = as.numeric(as.character(year))) %>%
   mutate(year = case_when(year <= 2000 ~ "1990-2000",
                           year > 2000 ~ "2001-2007"))
 
+cutpoints =  list(
+  o3_lag_1 = "q3",
+  no2 = 2,
+  no2_lag_1 = 2,
+  humidity_relative = "q3",
+)
 
-cutpoints = list(o3_lag_1 = "q3",
-                 o3_lag_2 = "q5",
-                 o3_lag_3 = "q3",
-                 no2 = "q3",
-                 no2_lag_1 = "q5",
-                 no2_lag_2 = "q5",
-                 no2_lag_3 = "q2",
-                 humidity_relative = "q3")
 
 m.out <-
   matchit(
-    heat_wave ~ heat_wave_lag_1 + heat_wave_lag_2 + heat_wave_lag_3 + o3_lag_1 + o3_lag_2 + o3_lag_3 + no2 + no2_lag_1 + no2_lag_2 + no2_lag_3 + humidity_relative + year,
+    heat_wave ~ heat_wave_lag_1 + heat_wave_lag_2 + heat_wave_lag_3 + 
+     o3_lag_1 + no2 + no2_lag_1 + humidity_relative + 
+      week + year,
     data = data,
     method = "cem",
     cutpoints = cutpoints,
@@ -174,12 +126,9 @@ m.out <-
 
 m.out
 
-summary(m.out)
-
-
 # make the love plot
 love.plot(
-  heat_wave ~ heat_wave_lag_1 + heat_wave_lag_2 + heat_wave_lag_3 + o3_lag_1 + o3_lag_2 + o3_lag_3 + no2 + no2_lag_1 + no2_lag_2 + no2_lag_3 + humidity_relative + year,
+ heat_wave ~ heat_wave_lag_1 + heat_wave_lag_2 + heat_wave_lag_3 + o3_lag_1 + o3_lag_2 + o3_lag_3 + no2 + no2_lag_1 + no2_lag_2 + no2_lag_3 + humidity_relative + month + week + year,
   data = data,
   weights = get.w(m.out),
   method = "matching",

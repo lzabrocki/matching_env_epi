@@ -1557,7 +1557,7 @@ text-align: justify}
 </div>
 <p>As a reminder, there are 122 days where an heat wave occurred and 1254 days without heat waves.</p>
 <h1 id="propensity-score-matching">Propensity Score Matching</h1>
-<p>We first implement below a propensity score matching procedure where:</p>
+<p>We implement below a propensity score matching procedure where:</p>
 <ul>
 <li>each day with an heat wave is matched to the most similar day without heat wave. This is a 1:1 nearest neighbor matching without replacement.</li>
 <li>the distance metric used for the matching is the propensity score which is predicted using a logistic model where we regress the heat wave dummy on its three lags, the three lags of ozone, nitrogen dioxide and its three lags, the relative humidity, the calendar indicators for the day of the week, the week and the year.</li>

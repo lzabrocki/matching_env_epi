@@ -94,7 +94,7 @@ As a reminder, there are `r nrow(data %>% filter(heat_wave==1))` days where an h
 
 # Propensity Score Matching
 
-We first implement below a propensity score matching procedure where:
+We implement below a propensity score matching procedure where:
 
 * each day with an heat wave is matched to the most similar day without heat wave. This is a 1:1 nearest neighbor matching without replacement.
 * the distance metric used for the matching is the propensity score which is predicted using a logistic model where we regress the heat wave dummy on its three lags, the three lags of ozone, nitrogen dioxide and its three lags, the relative humidity, the calendar indicators for the day of the week, the week and the year.
