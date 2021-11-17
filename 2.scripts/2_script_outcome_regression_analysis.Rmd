@@ -140,13 +140,13 @@ where $t$ is the time index, $\beta$ is the coefficient of interest and $\epsilo
 # run the model and clean ouput
 output_crude_regression <- data %>%
   lm(y_obs ~ heat_wave, data = .) %>%
-  tidy(., conf.int = TRUE)
+  tidy(., conf.int = TRUE) %>%
+  filter(term == "heat_wave") %>%
+  select(term, estimate, conf.low, conf.high) %>%
+  mutate_at(vars(estimate:conf.high), ~ round(., 0))
 
 # display output
 output_crude_regression %>%
-  filter(term == "heat_wave") %>%
-  select(term, estimate, conf.low, conf.high) %>%
-  mutate_at(vars(estimate:conf.high), ~ round(., 0)) %>%
   rename(
     "Term" = term,
     "Estimate" = estimate,
@@ -172,13 +172,13 @@ where $WP$ is the vector of weather and air pollutants variables and $C_{t}$ the
 output_adjusted_regression <- data %>%
   lm(y_obs ~ heat_wave + humidity_relative + o3 + no2 + weekday + month + as.factor(year),
      data = .) %>%
-  tidy(., conf.int = TRUE)
+  tidy(., conf.int = TRUE) %>%
+  filter(term == "heat_wave") %>%
+  select(term, estimate, conf.low, conf.high) %>%
+  mutate_at(vars(estimate:conf.high), ~ round(., 0)) 
 
 # display output
 output_adjusted_regression %>%
-  filter(term == "heat_wave") %>%
-  select(term, estimate, conf.low, conf.high) %>%
-  mutate_at(vars(estimate:conf.high), ~ round(., 0)) %>%
   rename(
     "Term" = term,
     "Estimate" = estimate,
@@ -189,5 +189,29 @@ output_adjusted_regression %>%
 ```
 
 The estimate for the effect of heat waves on Yoll is equal to + `r round(output_adjusted_regression$estimate[2], 0)` and the 95% confidence interval is consistent with effects ranging from `r round(output_adjusted_regression$conf.low[2], 0)` up to `r round(output_adjusted_regression$conf.high[2], 0)`. The estimated effect is closer to the true effect of +230 Yoll but is still biased. This regression model may be too simple---we could also include lags of the variables and use different functional forms if we think they could reduce omitted variable bias.
+
+We finally save the results from the two outcome regression models in the `3.outputs/1.data/analysis_results` folder:
+
+
+```{r}
+bind_rows(output_crude_regression,
+  output_adjusted_regression) %>%
+  mutate(
+    procedure = c(
+      "Outcome Regression Model without Covariates",
+      "Outcome Regression Model with Covariates"
+    )
+  ) %>%
+  saveRDS(
+    .,
+    here::here(
+      "3.outputs",
+      "1.data",
+      "analysis_results",
+      "data_analysis_regression.RDS"
+    )
+  )
+```
+
 
 

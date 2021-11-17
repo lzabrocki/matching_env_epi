@@ -369,7 +369,23 @@ graph_love_plot_ps_2[["data"]] %>%
   kable(align = c("l", "c"))
 ```
 
-We can see that the average of standardized mean differences is 0.01 higher when using a caliper than without one.  
+We can see that the average of standardized mean differences is 0.01 higher when using a caliper than without one.
+
+
+We finally save the data on covariates balance in the `3.outputs/1.data/covariates_balance` folder.
+
+```{r}
+saveRDS(
+  graph_love_plot_ps_2[["data"]],
+  here::here(
+    "3.outputs",
+    "1.data",
+    "covariates_balance",
+    "data_cov_balance_ps.RDS"
+  )
+)
+```
+
 
 ### Analysis of Matched Data
 
@@ -517,3 +533,32 @@ results_ps_w_calliper_w_cov %>%
 ```
 
 We find that the average effect on the treated is equal to +`r results_ps_w_calliper_w_cov$estimate` years of life lost: the estimate is still very close to the true effect. The 95% confidence interval is consistent with effects ranging from +`r results_ps_w_calliper_w_cov$conf.low` up to +`r results_ps_w_calliper_w_cov$conf.high`. The width of confidence interval is now equal to `r results_ps_w_calliper_w_cov$conf.high - results_ps_w_calliper_w_cov$conf.low`, which is half smaller than the previous interval of `r results_ps_w_calliper$conf.high - results_ps_w_calliper$conf.low`.
+
+
+We finally save the data on results from propensity score analyses in the `3.outputs/1.data/analysis_results` folder.
+
+```{r}
+bind_rows(
+  results_ps_no_calliper,
+  results_ps_no_calliper_w_cov,
+  results_ps_w_calliper,
+  results_ps_w_calliper_w_cov
+) %>%
+  mutate(
+    procedure = c(
+      "Propensity Score without Calliper",
+      "Propensity Scpre without Calliper and with Covariates Adjustment",
+      "Propensity Score with a 0.5 Calliper",
+      "Propensity Score with a 0.5 Calipper and with Covariates"
+    )
+  ) %>%
+  saveRDS(
+    .,
+    here::here(
+      "3.outputs",
+      "1.data",
+      "analysis_results",
+      "data_analysis_ps.RDS"
+    )
+  )
+```
