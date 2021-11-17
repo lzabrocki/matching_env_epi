@@ -94,50 +94,252 @@ data <-
 
 As a reminder, there are `r nrow(data %>% filter(heat_wave==1))` days where an heat wave occurred and `r nrow(data %>% filter(heat_wave==0))` days without heat waves. The true average treatment effect on the treated is equal to +230 YoLL.
 
+
 # Coarsened Exact Matching
 
-Cutpoints:
+We implement below a coarsened exact matching procedure where:
+
+* each day with an heat wave is matched to the most similar day without heat wave according to coarsened covariates. This is a 1:1 nearest neighbor matching without replacement.
+* We match units according the three lags of the heat wave indicator, the first lag of ozone coarsened into terciles, nitrogen dioxide and its first lag coarsened into two bins, the relative humidity coarsened into terciles, the week of the year, and the year splitted into periods ("1990-2000" and "2001-2007"). 
+
+We explored many different types of coarsening and the values we chose seemed to be result in the best sample size-covariates balance trade-off. 
+      
+Once treated and control units are matched, we assess whether covariates balance has improved. 
+
+We finally estimate the treatment effect.
+
+### Matching Procedure and Covariates Balance Improvement
+
+We implement below the coarsened exact matching procedure:
 
 ```{R, echo=TRUE}
-
+# first we split the year variable into two periods
 data <- data %>%
-  mutate(year = as.numeric(as.character(year))) %>%
-  mutate(year = case_when(year <= 2000 ~ "1990-2000",
-                          year > 2000 ~ "2001-2007"))
+  mutate(year_binned = as.numeric(as.character(year))) %>%
+  mutate(year_binned = case_when(year_binned <= 2000 ~ "1990-2000",
+                          year_binned > 2000 ~ "2001-2007"))
 
+# we set the cut-points for continuous covariates
 cutpoints =  list(
   o3_lag_1 = "q3",
   no2 = 2,
   no2_lag_1 = 2,
-  humidity_relative = "q3",
+  humidity_relative = "q3"
 )
 
-
-m.out <-
+# we implement the matching procedure
+matching_coarsened <-
   matchit(
     heat_wave ~ heat_wave_lag_1 + heat_wave_lag_2 + heat_wave_lag_3 + 
      o3_lag_1 + no2 + no2_lag_1 + humidity_relative + 
-      week + year,
+      week + year_binned,
     data = data,
     method = "cem",
     cutpoints = cutpoints,
     k2k = TRUE
   )
 
-m.out
+# display results
+matching_coarsened
+```
+
+The outputtells us that only `r matching_coarsened[["nn"]][3]` treated units were matched. We then evaluate the covariates balance using the `love.plot()` function from the cobalt package and the standardized mean difference as the summary statistic:
+
+```{r, fig.width = 8, fig.height = 8, code_folding="Please show me the code!"}
+# first we nicely label covariates
+cov_labels <- c(
+  heat_wave_lag_1 = "Heat Wave t-1",
+  heat_wave_lag_2 = "Heat Wave t-2",
+  heat_wave_lag_3 = "Heat Wave t-3",
+  o3_lag_1 = "O3 t-1",
+  o3_lag_2 = "O3 t-2",
+  o3_lag_3 = "O3 t-3",
+  no2 = "NO2",
+  no2_lag_1 = "NO2 t-1",
+  no2_lag_2 = "NO2 t-2",
+  no2_lag_3 = "NO2 t-3",
+  humidity_relative = "Relative Humidity",
+  month_august = "August",
+  month_june = "June",
+  month_july = "July",
+  week_22 = "Week 22",
+  week_23 = "Week 23",
+  week_24 = "Week 24",
+  week_25 = "Week 25",
+  week_26 = "Week 26",
+  week_27 = "Week 27",
+  week_28 = "Week 28",
+  week_29 = "Week 29",
+  week_30 = "Week 30",
+  week_31 = "Week 31",
+  week_32 = "Week 32",
+  week_33 = "Week 33",
+  week_34 = "Week 34",
+  week_35 = "Week 35",
+  year_1990 = "1990",
+  year_1991 = "1991",
+  year_1992 = "1992",
+  year_1993 = "1993",
+  year_1994 = "1994",
+  year_1995 = "1995",
+  year_1996 = "1996",
+  year_1997 = "1997",
+  year_1998 = "1998",
+  year_1999 = "1999",
+  year_2000 = "2000",
+  year_2001 = "2001",
+  year_2002 = "2002",
+  year_2003 = "2003",
+  year_2004 = "2004",
+  year_2005 = "2005",
+  year_2006 = "2006",
+  year_2007 = "2007")
 
 # make the love plot
-love.plot(
- heat_wave ~ heat_wave_lag_1 + heat_wave_lag_2 + heat_wave_lag_3 + o3_lag_1 + o3_lag_2 + o3_lag_3 + no2 + no2_lag_1 + no2_lag_2 + no2_lag_3 + humidity_relative + month + week + year,
+graph_love_plot_cm <- love.plot(
+   heat_wave ~ heat_wave_lag_1 + heat_wave_lag_2 + heat_wave_lag_3 + o3_lag_1 + o3_lag_2 + o3_lag_3 + no2 + no2_lag_1 + no2_lag_2 + no2_lag_3 + humidity_relative + month + week + year,
   data = data,
-  weights = get.w(m.out),
-  method = "matching",
+  estimand = "ATT",
+  weights = list("Matched Data" = matching_coarsened),
+  drop.distance = TRUE,
   abs = TRUE,
   var.order = "unadjusted",
   binary = "std",
-  estimand = "ATT",
-  thresholds = c(m = .1)
+  thresholds = c(m = .1),
+  var.names = cov_labels,
+  sample.names = c("Initial Data", "Matched Data"),
+  shapes = c("circle", "triangle"),
+  colors = c(my_orange, my_blue)
 ) +
-  xlab("Absolute Standardized mean Differences") +
+  xlab("Absolute Standardized Mean Differences") +
   theme_tufte()
+
+# display the graph
+graph_love_plot_cm
+
+# save the graph
+ggsave(
+  graph_love_plot_cm,
+  filename = here::here(
+    "3.outputs",
+    "2.graphs",
+    "graph_love_plot_cm.pdf"
+  ),
+  width = 20,
+  height = 15,
+  units = "cm",
+  device = cairo_pdf
+)
+```
+
+On this graph, we see whether covariates balance has increased for most covariates but for the year indicators. We divided the year variable in only two groups to help increase the sample size. If we increase the number of groups, we do not find similar pairs of treated and control units. The imbalance for NO$_{2}$ in $t$ is also a bit high. We display below the average of standardized mean differences:
+
+```{r}
+graph_love_plot_cm[["data"]] %>%
+  group_by(Sample) %>%
+  summarise("Average of Standardized Mean Differences" = round(mean(stat), 2),
+            "Std. Deviation of Standardized Mean Differences" = round(sd(stat), 2)) %>%
+  kable(align = c("l", "c"))
+```
+
+The average standardized mean of differences is 0.1, which is about two times larger than the ones found with propensity score procedures. We are also working with a smaller number of matched units.
+
+### Analysis of Matched Data
+
+We now move to the analysis of the matched datasets.  It is very important to note that the target causal estimand is not anymore the the average treatment effect on the treated as not all treated units could be matched to similar control units. To know the true causal effect for the match data, we compute the mean difference in potential outcomes:
+
+```{r}
+# we retrieve the matched data
+data_cm <- match.data(matching_coarsened)
+
+# compute the true effect for the data
+true_att <-
+  round(mean(data_cm$y_1[data_cm$heat_wave == 1] - data_cm$y_0[data_cm$heat_wave == 0]), 0)
+```
+
+The true treatment effect for the matched data is equal to +`r true_att` YoLL. To estimate this effect, we first use a simple regression model where we regress the YoLL on the treatment indicator.
+
+```{r}
+# we fit the regression model
+model_cm_wo_cov <- lm(y_obs ~ heat_wave,
+                           data = data_cm,
+                           weights = weights)
+
+# retrieve the estimate and 95% ci
+results_cm_wo_cov <- tidy(coeftest(
+  model_cm_wo_cov,
+  vcov. = vcovCL,
+  cluster = ~ subclass
+),
+conf.int = TRUE) %>%
+  filter(term == "heat_wave") %>%
+  select(term, estimate, conf.low, conf.high) %>%
+  mutate_at(vars(estimate:conf.high), ~ round(., 0))
+
+# display results
+results_cm_wo_cov %>%
+  rename(
+    "Term" = term,
+    "Estimate" = estimate,
+    "95% CI Lower Bound" = conf.low,
+    "95% CI Upper Bound" = conf.high
+  ) %>%
+  kable(., align = c("l", "c", "c", "c"))
+```
+
+We find that the estimate for the average effect on the treated is equal to +`r results_cm_wo_cov$estimate` years of life lost. This is the true effect size. The 95% confidence interval is consistent with effects ranging from +`r results_cm_wo_cov$conf.low` up to +`r results_cm_wo_cov$conf.high`. If we want to increase the precision of our estimate and remove any remaining imbalance in covariates, we can also run a multivariate regression. We adjust below for the same variables used in the propensity score matching procedure:
+
+```{r}
+# we fit the regression model
+model_cm_w_cov <-
+  lm(
+    y_obs ~ heat_wave + heat_wave_lag_1 + heat_wave_lag_2 + heat_wave_lag_3 + o3_lag_1 + o3_lag_2 + o3_lag_3 + no2 + no2_lag_1 + no2_lag_2 + no2_lag_3 + humidity_relative + month + week + year,
+    data = data_cm,
+    weights = weights
+  )
+
+# retrieve the estimate and 95% ci
+results_cm_w_cov <- tidy(coeftest(
+  model_cm_w_cov,
+  vcov. = vcovCL,
+  cluster = ~ subclass
+),
+conf.int = TRUE) %>%
+  filter(term == "heat_wave") %>%
+  select(term, estimate, conf.low, conf.high) %>%
+  mutate_at(vars(estimate:conf.high), ~ round(., 0))
+
+# display results
+results_cm_w_cov %>%
+  rename(
+    "Term" = term,
+    "Estimate" = estimate,
+    "95% CI Lower Bound" = conf.low,
+    "95% CI Upper Bound" = conf.high
+  ) %>%
+  kable(., align = c("l", "c", "c", "c"))
+```
+
+We find that the average effect on the treated is equal to +`r results_cm_w_cov$estimate` years of life lost: the estimate is now lower than the true effect. The 95% confidence interval is consistent with effects ranging from +`r results_cm_w_cov$conf.low` up to +`r results_cm_w_cov$conf.high`. The width of confidence interval is now equal to `r results_cm_w_cov$conf.high - results_cm_w_cov$conf.low`, which is smaller than the previous interval of `r results_cm_wo_cov$conf.high - results_cm_wo_cov$conf.low`.
+
+We finally save the data on coarsened results in the `3.outputs/1.data/analysis_results` folder.
+
+```{r}
+bind_rows(
+  results_cm_w_cov,
+  results_cm_wo_cov) %>%
+  mutate(
+    procedure = c(
+      "Coarsened Matching without Covariates Adjustment",
+      "Coarsened Matching with Covariates Adjustment")
+  ) %>%
+  saveRDS(
+    .,
+    here::here(
+      "3.outputs",
+      "1.data",
+      "analysis_results",
+      "data_analysis_cm.RDS"
+    )
+  )
 ```
