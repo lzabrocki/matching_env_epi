@@ -51,6 +51,7 @@ theme_tufte <- function() {
         family = font,
         color = "black",
         size = 8,
+        hjust=1,
         margin = margin(r = 0.2, unit = "cm")
       ),
       # axis ticks

@@ -18,6 +18,7 @@ author:
 date: "`r Sys.Date()`"
 output: 
     distill::distill_article:
+      keep_md: true
       toc: true
       toc_depth: 3
 editor_options: 
@@ -136,13 +137,12 @@ graph_propensity_score_distribution_1 <- bal.plot(
   var.name = "distance",
   which = "both",
   sample.names = c("Initial Data", "Matched Data"),
-  type = "density"
-) +
+  type = "density") +
   ggtitle("Distribution of the Propensity Score Before and After Matching") +
   xlab("Propensity Scores") +
   scale_fill_manual(
     name = "Group:",
-    values = c(my_orange, my_blue),
+    values = c(my_blue, my_orange),
     labels = c("Days without Heat Waves", "Days with Heat Waves")
   ) +
   theme_tufte()
@@ -152,7 +152,7 @@ graph_propensity_score_distribution_1
 
 # save the graph
 ggsave(
-  graph_propensity_score_distribution_1,
+  graph_propensity_score_distribution_1 + labs(title = NULL),
   filename = here::here(
     "3.outputs",
     "2.graphs",
@@ -231,6 +231,7 @@ graph_love_plot_ps_1 <- love.plot(
   shapes = c("circle", "triangle"),
   colors = c(my_orange, my_blue)
 ) +
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) +
   xlab("Absolute Standardized Mean Differences") +
   theme_tufte()
 
@@ -239,7 +240,7 @@ graph_love_plot_ps_1
 
 # save the graph
 ggsave(
-  graph_love_plot_ps_1,
+  graph_love_plot_ps_1 + labs(title = NULL),
   filename = here::here(
     "3.outputs",
     "2.graphs",
@@ -305,7 +306,7 @@ graph_propensity_score_distribution_2
 
 # save the graph
 ggsave(
-  graph_propensity_score_distribution_2,
+  graph_propensity_score_distribution_2 + labs(title = NULL),
   filename = here::here(
     "3.outputs",
     "2.graphs",
@@ -338,6 +339,7 @@ graph_love_plot_ps_2 <- love.plot(
   shapes = c("circle", "triangle", "square"),
   colors = c(my_orange, my_blue, "#81b29a")
 ) +
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) +
   xlab("Absolute Standardized mean Differences") +
   theme_tufte()
 
