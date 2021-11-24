@@ -18,6 +18,7 @@ author:
 date: "`r Sys.Date()`"
 output: 
     distill::distill_article:
+      keep_md: true
       toc: true
       toc_depth: 3
 editor_options: 
@@ -74,18 +75,20 @@ We also have to load the `script_time_series_matching_function.R` located in the
 
 ```{r}
 # load matching functions
-source(here::here("2.scripts", "functions", "script_time_series_matching_function.R"))
+source(here::here(
+  "2.scripts",
+  "functions",
+  "script_time_series_matching_function.R"
+))
 ```
 
 We load our custom `ggplot2` theme for graphs:
 
 ```{r}
 # load ggplot custom theme
-source(here::here(
-  "2.scripts",
-  "functions",
-  "script_theme_tufte.R"
-))
+source(here::here("2.scripts",
+                  "functions",
+                  "script_theme_tufte.R"))
 # define nice colors
 my_blue <- "#0081a7"
 my_orange <- "#fb8500"
@@ -144,10 +147,28 @@ matching_data %>%
 We save the `matching_data`:
 
 ```{r}
-saveRDS(matching_data, here::here("3.outputs", "1.data", "constrained_pair_matching", "matching_data.rds"))
+saveRDS(
+  matching_data,
+  here::here(
+    "3.outputs",
+    "1.data",
+    "constrained_pair_matching",
+    "matching_data.rds"
+  )
+)
 ```
 
 ### Defining Thresholds for Matching Covariates
+
+For each relevant covariate, we must define a maximum distance for which a treated unit can be matched to a control unit. We chose the distance to maximize covariates balance but also reach a number of matched treated units large enough to draw our inference upon:
+
+* A treated unit can be matched to a control unit for a maximum distance of 4 years.
+* A treated unit must be matched to a control unit for the same day of the week.
+* A treated unit can be matched to a control unit for a maximum distance of 30 days of a year.
+* A treated unit must be matched to a control unit for the same three lags of the heat wave dummy.
+* A treated unit can be matched to a control unit for a maximum distance of 10 percentage points in relative humidity.
+* A treated unit can be matched to a control unit for a maximum distance of 12 $\mu g/m^3$ in the three lags of ozone.
+* A treated unit can be matched to a control unit for a maximum distance of 0 $\mu g/m^3$ in the current and three lags of nitrogen dioxide.
 
 Below is the code to define the relevant thresholds:
 
@@ -218,7 +239,7 @@ for (i in 1:length(groups_labels)){
 }
 ```
 
-For somes cases, several controls units were matched to a treatment unit. We use the `igraph` package to force pair matching via bipartite maximal weighted matching. Below is the required code:
+For some cases, several controls units were matched to a treatment unit. We use the `igraph` package to force pair matching via bipartite maximal weighted matching. Below is the required code:
 
 ```{r}
 # we build a bipartite graph with one layer of treated nodes, and another layer of control nodes.
@@ -279,10 +300,20 @@ We finally merge the `matched_pairs` with the `matching_matching_data` to retrie
 
 ```{r}
 # select the matched data for the analysis
-final_data <- left_join(matched_pairs, matching_data, by = "date")
+final_data <-
+  left_join(matched_pairs, matching_data, by = "date") %>%
+  mutate(pair_number = as.factor(pair_number))
 
 # save the matched data
-saveRDS(final_data, here::here("3.outputs", "1.data", "constrained_pair_matching", "matched_data.Rds"))
+saveRDS(
+  final_data,
+  here::here(
+    "3.outputs",
+    "1.data",
+    "constrained_pair_matching",
+    "matched_data.Rds"
+  )
+)
 ```
 
 # Checking Covariates Balance Improvement
@@ -552,10 +583,70 @@ ggsave(
 )
 ```
 
+### Love Plot Similar to `Cobalt`
+
+```{r, fig.width=8, fig.height=4, code_folding="Please show me the code!"}
+# compute figures for the love plot
+data_cov_continuous <- data %>%
+  select(dataset, is_treated, heat_wave_lag_1:year_2007) %>%
+  select(-contains("weekday"), -contains("temperature"), -heat_wave_lag_0_2) %>%
+  pivot_longer(
+    cols = -c(is_treated, dataset),
+    names_to = "variable",
+    values_to = "values"
+  ) %>%
+  select(dataset, is_treated, variable, values)
+
+data_abs_difference <- data_cov_continuous %>%
+  group_by(dataset, variable, is_treated) %>%
+  summarise(mean_values = mean(values, na.rm = TRUE)) %>%
+  summarise(abs_difference = abs(mean_values[2] - mean_values[1]))
+
+data_sd <-  data_cov_continuous %>%
+  filter(is_treated == "True") %>%
+  group_by(dataset, variable, is_treated) %>%
+  summarise(sd_treatment = sd(values, na.rm = TRUE)) %>%
+  ungroup() %>%
+  select(dataset, variable, sd_treatment)
+
+data_love <-
+  left_join(data_abs_difference, data_sd, by = c("dataset", "variable")) %>%
+  mutate(standardized_difference = abs_difference / sd_treatment) %>%
+  select(-c(abs_difference, sd_treatment))
+
+# make the graph
+graph_cpm_love_plot_cobalt <- ggplot(data_love, aes(y = reorder(variable, standardized_difference), x = standardized_difference, colour = fct_rev(dataset), shape = fct_rev(dataset))) +
+  geom_vline(xintercept = 0, size = 0.3) +
+  geom_vline(xintercept = 0.1, color = "black", linetype = "dashed") +
+  geom_point(size = 4, alpha = 0.8) +
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 5)) +
+  scale_colour_manual(name = "Dataset:", values = c(my_blue, my_orange)) +
+  scale_shape_manual(name = "Dataset:", values = c(17, 16)) +
+  xlab("Standardized Mean Differences") +
+  ylab("Day") + 
+  theme_tufte()
+
+# display the graph
+graph_cpm_love_plot_cobalt
+
+# save the graph
+ggsave(
+  graph_cpm_love_plot_cobalt,
+  filename = here::here(
+    "3.outputs",
+    "2.graphs",
+    "graph_cpm_love_plot_1.pdf"
+  ),
+  width = 20,
+  height = 15,
+  units = "cm",
+  device = cairo_pdf
+)
+```
 
 # Analysing Results
 
-We must be careful when we analyze the results as only `r N_matched` treated units were matched: the estimand is not longer the ATT. To know the true causal effect, we must compute the average difference in potential outcomes:
+We must be careful when we analyze the results as only `r N_matched` treated units were matched: the estimand is no longer the ATT. To know the true causal effect, we must compute the average difference in potential outcomes:
 
 ```{R, echo=TRUE}
 # compute the true effect for the data
@@ -569,7 +660,7 @@ The true causal effect is equal to + `r true_att`. We then compute the estimate 
 # we fit the regression model
 model <-
   lm(
-    y_obs ~ is_treated + pair_number,
+    y_obs ~ is_treated,
     data = final_data
   )
 
@@ -596,3 +687,24 @@ results %>%
 ```
 
 We find that the average effect on the treated is equal to +`r results$estimate` years of life lost: the estimate is equal to the true true effect. The 95% confidence interval is however wide and is consistent with effects ranging from +`r results$conf.low` up to +`r results$conf.high`.
+
+
+We finally save the data on constrained pair matching results in the `3.outputs/1.data/analysis_results` folder.
+
+```{r}
+results %>%
+  mutate(
+    procedure = "Constrained Pair Matching",
+    true_effect = true_att,
+    sample_size = N_matched*2
+  ) %>%
+  saveRDS(
+    .,
+    here::here(
+      "3.outputs",
+      "1.data",
+      "analysis_results",
+      "data_analysis_cm.RDS"
+    )
+  )
+```
