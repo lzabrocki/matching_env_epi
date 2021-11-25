@@ -585,11 +585,12 @@ ggsave(
 
 ### Love Plot Similar to `Cobalt`
 
-```{r, fig.width=8, fig.height=4, code_folding="Please show me the code!"}
-# compute figures for the love plot
+We plot below the love plot for all variables used in the propensity score matching procedure to compare the balance with the constrained pair matching procedure:
+
+```{r, fig.width=10, fig.height=8, code_folding="Please show me the code!"}
+# compute absolute standardized mean differences for continuous covariates
 data_cov_continuous <- data %>%
-  select(dataset, is_treated, heat_wave_lag_1:year_2007) %>%
-  select(-contains("weekday"), -contains("temperature"), -heat_wave_lag_0_2) %>%
+  select(dataset, is_treated, humidity_relative, o3:no2_lag_3) %>%
   pivot_longer(
     cols = -c(is_treated, dataset),
     names_to = "variable",
@@ -597,34 +598,114 @@ data_cov_continuous <- data %>%
   ) %>%
   select(dataset, is_treated, variable, values)
 
-data_abs_difference <- data_cov_continuous %>%
+data_abs_difference_continuous <- data_cov_continuous %>%
   group_by(dataset, variable, is_treated) %>%
   summarise(mean_values = mean(values, na.rm = TRUE)) %>%
   summarise(abs_difference = abs(mean_values[2] - mean_values[1]))
 
-data_sd <-  data_cov_continuous %>%
-  filter(is_treated == "True") %>%
-  group_by(dataset, variable, is_treated) %>%
+data_sd_continuous <- data_cov_continuous %>%
+  filter(dataset == "Initial Data" & is_treated == "True") %>%
+  group_by(variable) %>%
   summarise(sd_treatment = sd(values, na.rm = TRUE)) %>%
   ungroup() %>%
-  select(dataset, variable, sd_treatment)
+  select(variable, sd_treatment)
 
-data_love <-
-  left_join(data_abs_difference, data_sd, by = c("dataset", "variable")) %>%
+data_love_continuous <-
+  left_join(data_abs_difference_continuous, data_sd_continuous, by = c("variable")) %>%
   mutate(standardized_difference = abs_difference / sd_treatment) %>%
   select(-c(abs_difference, sd_treatment))
 
+
+# compute absolute raw mean differences for binary covariates
+data_cov_binary <- data %>%
+  select(dataset, is_treated, heat_wave_lag_1:heat_wave_lag_3, week_24:year_2007) %>%
+  pivot_longer(
+    cols = -c(is_treated, dataset),
+    names_to = "variable",
+    values_to = "values"
+  ) %>%
+  select(dataset, is_treated, variable, values)
+
+data_love_binary <- data_cov_binary %>%
+  group_by(dataset, variable, is_treated) %>%
+  summarise(mean_values = mean(values, na.rm = TRUE)) %>%
+  summarise(standardized_difference = abs(mean_values[2] - mean_values[1]))
+
+
+# combine the two datasets
+data_love <- bind_rows(data_love_continuous, data_love_binary)
+
+# add variable labels
+data_love <- data_love %>%
+  mutate(
+    variable = case_when(
+      variable == "heat_wave_lag_1" ~ "Heat Wave t-1",
+      variable == "heat_wave_lag_2" ~ "Heat Wave t-2",
+      variable == "heat_wave_lag_3" ~ "Heat Wave t-3",
+      variable == "humidity_relative" ~ "Relative Humidity*",
+      variable == "month_august" ~ "August",
+      variable == "month_july" ~ "July",
+      variable == "month_june" ~ "June",
+      variable == "no2" ~ "NO2*",
+      variable == "no2_lag_1" ~ "NO2 t-1*",
+      variable == "no2_lag_2" ~ "NO2 t-2*",
+      variable == "no2_lag_3" ~ "NO2 t-3*",
+      variable == "o3" ~ "O3*",
+      variable == "o3_lag_1" ~ "O3 t-1*",
+      variable == "o3_lag_2" ~ "O3 t-2*",
+      variable == "o3_lag_3" ~ "O3 t-3*",
+      variable == "week_22" ~ "Week 22",
+      variable == "week_23" ~ "Week 23",
+      variable == "week_24" ~ "Week 24",
+      variable == "week_25" ~ "Week 25",
+      variable == "week_26" ~ "Week 26",
+      variable == "week_27" ~ "Week 27",
+      variable == "week_28" ~ "Week 28",
+      variable == "week_29" ~ "Week 29",
+      variable == "week_30" ~ "Week 30",
+      variable == "week_31" ~ "Week 31",
+      variable == "week_32" ~ "Week 32",
+      variable == "week_33" ~ "Week 33",
+      variable == "week_34" ~ "Week 34",
+      variable == "week_35" ~ "Week 35",
+      variable == "year_1990" ~ "1990",
+      variable == "year_1991" ~ "1991",
+      variable == "year_1992" ~ "1992",
+      variable == "year_1993" ~ "1993",
+      variable == "year_1994" ~ "1994",
+      variable == "year_1995" ~ "1995",
+      variable == "year_1996" ~ "1996",
+      variable == "year_1997" ~ "1997",
+      variable == "year_1998" ~ "1998",
+      variable == "year_1999" ~ "1999",
+      variable == "year_2000" ~ "2000",
+      variable == "year_2001" ~ "2001",
+      variable == "year_2002" ~ "2002",
+      variable == "year_2003" ~ "2003",
+      variable == "year_2004" ~ "2004",
+      variable == "year_2005" ~ "2005",
+      variable == "year_2006" ~ "2006",
+      variable == "year_2007" ~ "2007"
+    )
+  )
+
+# arrange the dataset
+data_love <- data_love %>%
+  arrange(dataset, standardized_difference) %>% 
+  mutate(variable=factor(variable, levels=variable))
+
 # make the graph
-graph_cpm_love_plot_cobalt <- ggplot(data_love, aes(y = reorder(variable, standardized_difference), x = standardized_difference, colour = fct_rev(dataset), shape = fct_rev(dataset))) +
+graph_cpm_love_plot_cobalt <- ggplot(data_love, aes(y = variable, x = standardized_difference, colour = fct_rev(dataset), shape = fct_rev(dataset))) +
   geom_vline(xintercept = 0, size = 0.3) +
   geom_vline(xintercept = 0.1, color = "black", linetype = "dashed") +
   geom_point(size = 4, alpha = 0.8) +
-  scale_x_continuous(breaks = scales::pretty_breaks(n = 5)) +
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 12)) +
   scale_colour_manual(name = "Dataset:", values = c(my_blue, my_orange)) +
   scale_shape_manual(name = "Dataset:", values = c(17, 16)) +
   xlab("Standardized Mean Differences") +
-  ylab("Day") + 
-  theme_tufte()
+  ylab("") + 
+  theme_tufte() + 
+  theme(plot.margin = margin(t = 0.25, r = 5, b = 0.25, l = 0, unit = "cm"))
 
 # display the graph
 graph_cpm_love_plot_cobalt
@@ -635,14 +716,27 @@ ggsave(
   filename = here::here(
     "3.outputs",
     "2.graphs",
-    "graph_cpm_love_plot_1.pdf"
+    "graph_cpm_love_plot_cobalt.pdf"
   ),
-  width = 20,
-  height = 15,
+  width = 30,
+  height = 18,
   units = "cm",
   device = cairo_pdf
 )
 ```
+
+We display below the average of absolute mean differences for the matching and matched datasets:
+
+```{r}
+data_love %>%
+  group_by(dataset) %>%
+  summarise("Average of Mean Differences" = round(mean(standardized_difference), 2),
+            "Std. Deviation of Mean Differences" = round(sd(standardized_difference), 2)) %>%
+  kable(align = c("l", "c"))
+```
+
+We can see that the average of mean differences has indeed decreased after matching.
+
 
 # Analysing Results
 

@@ -224,15 +224,17 @@ graph_love_plot_ps_1 <- love.plot(
   drop.distance = TRUE,
   abs = TRUE,
   var.order = "unadjusted",
-  binary = "std",
+  binary = "raw",
+  s.d.denom = "treated",
   thresholds = c(m = .1),
   var.names = cov_labels,
   sample.names = c("Initial Data", "Matched Data"),
   shapes = c("circle", "triangle"),
-  colors = c(my_orange, my_blue)
+  colors = c(my_orange, my_blue),
+  stars = "std"
 ) +
   scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) +
-  xlab("Absolute Standardized Mean Differences") +
+  xlab("Absolute Mean Differences") +
   theme_tufte()
 
 # display the graph
@@ -332,15 +334,17 @@ graph_love_plot_ps_2 <- love.plot(
   drop.distance = TRUE,
   abs = TRUE,
   var.order = "unadjusted",
-  binary = "std",
+  binary = "raw",
+  s.d.denom = "treated",
   thresholds = c(m = .1),
   var.names = cov_labels,
   sample.names = c("Initial Data", "Without Caliper", "With Caliper"),
   shapes = c("circle", "triangle", "square"),
-  colors = c(my_orange, my_blue, "#81b29a")
+  colors = c(my_orange, my_blue, "#81b29a"),
+  stars = "std"
 ) +
   scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) +
-  xlab("Absolute Standardized mean Differences") +
+  xlab("Absolute Mean Differences") +
   theme_tufte()
 
 # display the graph

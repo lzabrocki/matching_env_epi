@@ -15,7 +15,7 @@ author:
     url: https://lzabrocki.github.io/
     affiliation: Paris School of Economics
     affiliation_url: https://www.parisschoolofeconomics.eu/fr/zabrocki-leo/
-date: "2021-11-24"
+date: "2021-11-25"
 output: 
     distill::distill_article:
       keep_md: true
@@ -217,15 +217,17 @@ The outputtells us that only 47 treated units were matched. We then evaluate the
   drop.distance <span class='op'>=</span> <span class='cn'>TRUE</span>,
   abs <span class='op'>=</span> <span class='cn'>TRUE</span>,
   var.order <span class='op'>=</span> <span class='st'>"unadjusted"</span>,
-  binary <span class='op'>=</span> <span class='st'>"std"</span>,
+  binary <span class='op'>=</span> <span class='st'>"raw"</span>,
+  s.d.denom <span class='op'>=</span> <span class='st'>"treated"</span>,
   thresholds <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span>m <span class='op'>=</span> <span class='fl'>.1</span><span class='op'>)</span>,
   var.names <span class='op'>=</span> <span class='va'>cov_labels</span>,
   sample.names <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>"Initial Data"</span>, <span class='st'>"Matched Data"</span><span class='op'>)</span>,
   shapes <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>"circle"</span>, <span class='st'>"triangle"</span><span class='op'>)</span>,
-  colors <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='va'>my_orange</span>, <span class='va'>my_blue</span><span class='op'>)</span>
+  colors <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='va'>my_orange</span>, <span class='va'>my_blue</span><span class='op'>)</span>,
+  stars <span class='op'>=</span> <span class='st'>"std"</span>
 <span class='op'>)</span> <span class='op'>+</span>
   <span class='fu'>scale_x_continuous</span><span class='op'>(</span>breaks <span class='op'>=</span> <span class='fu'>scales</span><span class='fu'>::</span><span class='fu'><a href='https://scales.r-lib.org/reference/breaks_pretty.html'>pretty_breaks</a></span><span class='op'>(</span>n <span class='op'>=</span> <span class='fl'>10</span><span class='op'>)</span><span class='op'>)</span> <span class='op'>+</span>
-  <span class='fu'>xlab</span><span class='op'>(</span><span class='st'>"Absolute Standardized Mean Differences"</span><span class='op'>)</span> <span class='op'>+</span>
+  <span class='fu'>xlab</span><span class='op'>(</span><span class='st'>"Absolute Mean Differences"</span><span class='op'>)</span> <span class='op'>+</span>
   <span class='fu'>theme_tufte</span><span class='op'>(</span><span class='op'>)</span>
 
 <span class='co'># display the graph</span>
@@ -267,8 +269,8 @@ On this graph, we see whether covariates balance has increased for most covariat
 
 |Sample       | Average of Standardized Mean Differences |Std. Deviation of Standardized Mean Differences |
 |:------------|:----------------------------------------:|:-----------------------------------------------|
-|Initial Data |                   0.26                   |0.23                                            |
-|Matched Data |                   0.10                   |0.15                                            |
+|Initial Data |                   0.13                   |0.21                                            |
+|Matched Data |                   0.03                   |0.04                                            |
 
 </div>
 

@@ -15,7 +15,7 @@ author:
     url: https://lzabrocki.github.io/
     affiliation: Paris School of Economics
     affiliation_url: https://www.parisschoolofeconomics.eu/fr/zabrocki-leo/
-date: "2021-11-24"
+date: "2021-11-25"
 output: 
     distill::distill_article:
       keep_md: true
@@ -661,6 +661,176 @@ Plot for years:
 
 ### Love Plot Similar to `Cobalt`
 
+We plot below the love plot for all variables used in the propensity score matching procedure to compare the balance with the constrained pair matching procedure:
+
+<div class="layout-chunk" data-layout="l-body-outset">
+<details>
+<summary>Please show me the code!</summary>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class='co'># compute absolute standardized mean differences for continuous covariates</span>
+<span class='va'>data_cov_continuous</span> <span class='op'>&lt;-</span> <span class='va'>data</span> <span class='op'>%&gt;%</span>
+  <span class='fu'>select</span><span class='op'>(</span><span class='va'>dataset</span>, <span class='va'>is_treated</span>, <span class='va'>humidity_relative</span>, <span class='va'>o3</span><span class='op'>:</span><span class='va'>no2_lag_3</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
+  <span class='fu'>pivot_longer</span><span class='op'>(</span>
+    cols <span class='op'>=</span> <span class='op'>-</span><span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='va'>is_treated</span>, <span class='va'>dataset</span><span class='op'>)</span>,
+    names_to <span class='op'>=</span> <span class='st'>"variable"</span>,
+    values_to <span class='op'>=</span> <span class='st'>"values"</span>
+  <span class='op'>)</span> <span class='op'>%&gt;%</span>
+  <span class='fu'>select</span><span class='op'>(</span><span class='va'>dataset</span>, <span class='va'>is_treated</span>, <span class='va'>variable</span>, <span class='va'>values</span><span class='op'>)</span>
+
+<span class='va'>data_abs_difference_continuous</span> <span class='op'>&lt;-</span> <span class='va'>data_cov_continuous</span> <span class='op'>%&gt;%</span>
+  <span class='fu'>group_by</span><span class='op'>(</span><span class='va'>dataset</span>, <span class='va'>variable</span>, <span class='va'>is_treated</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
+  <span class='fu'>summarise</span><span class='op'>(</span>mean_values <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/mean.html'>mean</a></span><span class='op'>(</span><span class='va'>values</span>, na.rm <span class='op'>=</span> <span class='cn'>TRUE</span><span class='op'>)</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
+  <span class='fu'>summarise</span><span class='op'>(</span>abs_difference <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/MathFun.html'>abs</a></span><span class='op'>(</span><span class='va'>mean_values</span><span class='op'>[</span><span class='fl'>2</span><span class='op'>]</span> <span class='op'>-</span> <span class='va'>mean_values</span><span class='op'>[</span><span class='fl'>1</span><span class='op'>]</span><span class='op'>)</span><span class='op'>)</span>
+
+<span class='va'>data_sd_continuous</span> <span class='op'>&lt;-</span> <span class='va'>data_cov_continuous</span> <span class='op'>%&gt;%</span>
+  <span class='fu'><a href='https://rdrr.io/r/stats/filter.html'>filter</a></span><span class='op'>(</span><span class='va'>dataset</span> <span class='op'>==</span> <span class='st'>"Initial Data"</span> <span class='op'>&amp;</span> <span class='va'>is_treated</span> <span class='op'>==</span> <span class='st'>"True"</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
+  <span class='fu'>group_by</span><span class='op'>(</span><span class='va'>variable</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
+  <span class='fu'>summarise</span><span class='op'>(</span>sd_treatment <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/stats/sd.html'>sd</a></span><span class='op'>(</span><span class='va'>values</span>, na.rm <span class='op'>=</span> <span class='cn'>TRUE</span><span class='op'>)</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
+  <span class='fu'>ungroup</span><span class='op'>(</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
+  <span class='fu'>select</span><span class='op'>(</span><span class='va'>variable</span>, <span class='va'>sd_treatment</span><span class='op'>)</span>
+
+<span class='va'>data_love_continuous</span> <span class='op'>&lt;-</span>
+  <span class='fu'>left_join</span><span class='op'>(</span><span class='va'>data_abs_difference_continuous</span>, <span class='va'>data_sd_continuous</span>, by <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>"variable"</span><span class='op'>)</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
+  <span class='fu'>mutate</span><span class='op'>(</span>standardized_difference <span class='op'>=</span> <span class='va'>abs_difference</span> <span class='op'>/</span> <span class='va'>sd_treatment</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
+  <span class='fu'>select</span><span class='op'>(</span><span class='op'>-</span><span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='va'>abs_difference</span>, <span class='va'>sd_treatment</span><span class='op'>)</span><span class='op'>)</span>
+
+
+<span class='co'># compute absolute raw mean differences for binary covariates</span>
+<span class='va'>data_cov_binary</span> <span class='op'>&lt;-</span> <span class='va'>data</span> <span class='op'>%&gt;%</span>
+  <span class='fu'>select</span><span class='op'>(</span><span class='va'>dataset</span>, <span class='va'>is_treated</span>, <span class='va'>heat_wave_lag_1</span><span class='op'>:</span><span class='va'>heat_wave_lag_3</span>, <span class='va'>week_24</span><span class='op'>:</span><span class='va'>year_2007</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
+  <span class='fu'>pivot_longer</span><span class='op'>(</span>
+    cols <span class='op'>=</span> <span class='op'>-</span><span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='va'>is_treated</span>, <span class='va'>dataset</span><span class='op'>)</span>,
+    names_to <span class='op'>=</span> <span class='st'>"variable"</span>,
+    values_to <span class='op'>=</span> <span class='st'>"values"</span>
+  <span class='op'>)</span> <span class='op'>%&gt;%</span>
+  <span class='fu'>select</span><span class='op'>(</span><span class='va'>dataset</span>, <span class='va'>is_treated</span>, <span class='va'>variable</span>, <span class='va'>values</span><span class='op'>)</span>
+
+<span class='va'>data_love_binary</span> <span class='op'>&lt;-</span> <span class='va'>data_cov_binary</span> <span class='op'>%&gt;%</span>
+  <span class='fu'>group_by</span><span class='op'>(</span><span class='va'>dataset</span>, <span class='va'>variable</span>, <span class='va'>is_treated</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
+  <span class='fu'>summarise</span><span class='op'>(</span>mean_values <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/mean.html'>mean</a></span><span class='op'>(</span><span class='va'>values</span>, na.rm <span class='op'>=</span> <span class='cn'>TRUE</span><span class='op'>)</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
+  <span class='fu'>summarise</span><span class='op'>(</span>standardized_difference <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/MathFun.html'>abs</a></span><span class='op'>(</span><span class='va'>mean_values</span><span class='op'>[</span><span class='fl'>2</span><span class='op'>]</span> <span class='op'>-</span> <span class='va'>mean_values</span><span class='op'>[</span><span class='fl'>1</span><span class='op'>]</span><span class='op'>)</span><span class='op'>)</span>
+
+
+<span class='co'># combine the two datasets</span>
+<span class='va'>data_love</span> <span class='op'>&lt;-</span> <span class='fu'>bind_rows</span><span class='op'>(</span><span class='va'>data_love_continuous</span>, <span class='va'>data_love_binary</span><span class='op'>)</span>
+
+<span class='co'># add variable labels</span>
+<span class='va'>data_love</span> <span class='op'>&lt;-</span> <span class='va'>data_love</span> <span class='op'>%&gt;%</span>
+  <span class='fu'>mutate</span><span class='op'>(</span>
+    variable <span class='op'>=</span> <span class='fu'>case_when</span><span class='op'>(</span>
+      <span class='va'>variable</span> <span class='op'>==</span> <span class='st'>"heat_wave_lag_1"</span> <span class='op'>~</span> <span class='st'>"Heat Wave t-1"</span>,
+      <span class='va'>variable</span> <span class='op'>==</span> <span class='st'>"heat_wave_lag_2"</span> <span class='op'>~</span> <span class='st'>"Heat Wave t-2"</span>,
+      <span class='va'>variable</span> <span class='op'>==</span> <span class='st'>"heat_wave_lag_3"</span> <span class='op'>~</span> <span class='st'>"Heat Wave t-3"</span>,
+      <span class='va'>variable</span> <span class='op'>==</span> <span class='st'>"humidity_relative"</span> <span class='op'>~</span> <span class='st'>"Relative Humidity*"</span>,
+      <span class='va'>variable</span> <span class='op'>==</span> <span class='st'>"month_august"</span> <span class='op'>~</span> <span class='st'>"August"</span>,
+      <span class='va'>variable</span> <span class='op'>==</span> <span class='st'>"month_july"</span> <span class='op'>~</span> <span class='st'>"July"</span>,
+      <span class='va'>variable</span> <span class='op'>==</span> <span class='st'>"month_june"</span> <span class='op'>~</span> <span class='st'>"June"</span>,
+      <span class='va'>variable</span> <span class='op'>==</span> <span class='st'>"no2"</span> <span class='op'>~</span> <span class='st'>"NO2*"</span>,
+      <span class='va'>variable</span> <span class='op'>==</span> <span class='st'>"no2_lag_1"</span> <span class='op'>~</span> <span class='st'>"NO2 t-1*"</span>,
+      <span class='va'>variable</span> <span class='op'>==</span> <span class='st'>"no2_lag_2"</span> <span class='op'>~</span> <span class='st'>"NO2 t-2*"</span>,
+      <span class='va'>variable</span> <span class='op'>==</span> <span class='st'>"no2_lag_3"</span> <span class='op'>~</span> <span class='st'>"NO2 t-3*"</span>,
+      <span class='va'>variable</span> <span class='op'>==</span> <span class='st'>"o3"</span> <span class='op'>~</span> <span class='st'>"O3*"</span>,
+      <span class='va'>variable</span> <span class='op'>==</span> <span class='st'>"o3_lag_1"</span> <span class='op'>~</span> <span class='st'>"O3 t-1*"</span>,
+      <span class='va'>variable</span> <span class='op'>==</span> <span class='st'>"o3_lag_2"</span> <span class='op'>~</span> <span class='st'>"O3 t-2*"</span>,
+      <span class='va'>variable</span> <span class='op'>==</span> <span class='st'>"o3_lag_3"</span> <span class='op'>~</span> <span class='st'>"O3 t-3*"</span>,
+      <span class='va'>variable</span> <span class='op'>==</span> <span class='st'>"week_22"</span> <span class='op'>~</span> <span class='st'>"Week 22"</span>,
+      <span class='va'>variable</span> <span class='op'>==</span> <span class='st'>"week_23"</span> <span class='op'>~</span> <span class='st'>"Week 23"</span>,
+      <span class='va'>variable</span> <span class='op'>==</span> <span class='st'>"week_24"</span> <span class='op'>~</span> <span class='st'>"Week 24"</span>,
+      <span class='va'>variable</span> <span class='op'>==</span> <span class='st'>"week_25"</span> <span class='op'>~</span> <span class='st'>"Week 25"</span>,
+      <span class='va'>variable</span> <span class='op'>==</span> <span class='st'>"week_26"</span> <span class='op'>~</span> <span class='st'>"Week 26"</span>,
+      <span class='va'>variable</span> <span class='op'>==</span> <span class='st'>"week_27"</span> <span class='op'>~</span> <span class='st'>"Week 27"</span>,
+      <span class='va'>variable</span> <span class='op'>==</span> <span class='st'>"week_28"</span> <span class='op'>~</span> <span class='st'>"Week 28"</span>,
+      <span class='va'>variable</span> <span class='op'>==</span> <span class='st'>"week_29"</span> <span class='op'>~</span> <span class='st'>"Week 29"</span>,
+      <span class='va'>variable</span> <span class='op'>==</span> <span class='st'>"week_30"</span> <span class='op'>~</span> <span class='st'>"Week 30"</span>,
+      <span class='va'>variable</span> <span class='op'>==</span> <span class='st'>"week_31"</span> <span class='op'>~</span> <span class='st'>"Week 31"</span>,
+      <span class='va'>variable</span> <span class='op'>==</span> <span class='st'>"week_32"</span> <span class='op'>~</span> <span class='st'>"Week 32"</span>,
+      <span class='va'>variable</span> <span class='op'>==</span> <span class='st'>"week_33"</span> <span class='op'>~</span> <span class='st'>"Week 33"</span>,
+      <span class='va'>variable</span> <span class='op'>==</span> <span class='st'>"week_34"</span> <span class='op'>~</span> <span class='st'>"Week 34"</span>,
+      <span class='va'>variable</span> <span class='op'>==</span> <span class='st'>"week_35"</span> <span class='op'>~</span> <span class='st'>"Week 35"</span>,
+      <span class='va'>variable</span> <span class='op'>==</span> <span class='st'>"year_1990"</span> <span class='op'>~</span> <span class='st'>"1990"</span>,
+      <span class='va'>variable</span> <span class='op'>==</span> <span class='st'>"year_1991"</span> <span class='op'>~</span> <span class='st'>"1991"</span>,
+      <span class='va'>variable</span> <span class='op'>==</span> <span class='st'>"year_1992"</span> <span class='op'>~</span> <span class='st'>"1992"</span>,
+      <span class='va'>variable</span> <span class='op'>==</span> <span class='st'>"year_1993"</span> <span class='op'>~</span> <span class='st'>"1993"</span>,
+      <span class='va'>variable</span> <span class='op'>==</span> <span class='st'>"year_1994"</span> <span class='op'>~</span> <span class='st'>"1994"</span>,
+      <span class='va'>variable</span> <span class='op'>==</span> <span class='st'>"year_1995"</span> <span class='op'>~</span> <span class='st'>"1995"</span>,
+      <span class='va'>variable</span> <span class='op'>==</span> <span class='st'>"year_1996"</span> <span class='op'>~</span> <span class='st'>"1996"</span>,
+      <span class='va'>variable</span> <span class='op'>==</span> <span class='st'>"year_1997"</span> <span class='op'>~</span> <span class='st'>"1997"</span>,
+      <span class='va'>variable</span> <span class='op'>==</span> <span class='st'>"year_1998"</span> <span class='op'>~</span> <span class='st'>"1998"</span>,
+      <span class='va'>variable</span> <span class='op'>==</span> <span class='st'>"year_1999"</span> <span class='op'>~</span> <span class='st'>"1999"</span>,
+      <span class='va'>variable</span> <span class='op'>==</span> <span class='st'>"year_2000"</span> <span class='op'>~</span> <span class='st'>"2000"</span>,
+      <span class='va'>variable</span> <span class='op'>==</span> <span class='st'>"year_2001"</span> <span class='op'>~</span> <span class='st'>"2001"</span>,
+      <span class='va'>variable</span> <span class='op'>==</span> <span class='st'>"year_2002"</span> <span class='op'>~</span> <span class='st'>"2002"</span>,
+      <span class='va'>variable</span> <span class='op'>==</span> <span class='st'>"year_2003"</span> <span class='op'>~</span> <span class='st'>"2003"</span>,
+      <span class='va'>variable</span> <span class='op'>==</span> <span class='st'>"year_2004"</span> <span class='op'>~</span> <span class='st'>"2004"</span>,
+      <span class='va'>variable</span> <span class='op'>==</span> <span class='st'>"year_2005"</span> <span class='op'>~</span> <span class='st'>"2005"</span>,
+      <span class='va'>variable</span> <span class='op'>==</span> <span class='st'>"year_2006"</span> <span class='op'>~</span> <span class='st'>"2006"</span>,
+      <span class='va'>variable</span> <span class='op'>==</span> <span class='st'>"year_2007"</span> <span class='op'>~</span> <span class='st'>"2007"</span>
+    <span class='op'>)</span>
+  <span class='op'>)</span>
+
+<span class='co'># arrange the dataset</span>
+<span class='va'>data_love</span> <span class='op'>&lt;-</span> <span class='va'>data_love</span> <span class='op'>%&gt;%</span>
+  <span class='fu'>arrange</span><span class='op'>(</span><span class='va'>dataset</span>, <span class='va'>standardized_difference</span><span class='op'>)</span> <span class='op'>%&gt;%</span> 
+  <span class='fu'>mutate</span><span class='op'>(</span>variable<span class='op'>=</span><span class='fu'><a href='https://rdrr.io/r/base/factor.html'>factor</a></span><span class='op'>(</span><span class='va'>variable</span>, levels<span class='op'>=</span><span class='va'>variable</span><span class='op'>)</span><span class='op'>)</span>
+
+<span class='co'># make the graph</span>
+<span class='va'>graph_cpm_love_plot_cobalt</span> <span class='op'>&lt;-</span> <span class='fu'>ggplot</span><span class='op'>(</span><span class='va'>data_love</span>, <span class='fu'>aes</span><span class='op'>(</span>y <span class='op'>=</span> <span class='va'>variable</span>, x <span class='op'>=</span> <span class='va'>standardized_difference</span>, colour <span class='op'>=</span> <span class='fu'>fct_rev</span><span class='op'>(</span><span class='va'>dataset</span><span class='op'>)</span>, shape <span class='op'>=</span> <span class='fu'>fct_rev</span><span class='op'>(</span><span class='va'>dataset</span><span class='op'>)</span><span class='op'>)</span><span class='op'>)</span> <span class='op'>+</span>
+  <span class='fu'>geom_vline</span><span class='op'>(</span>xintercept <span class='op'>=</span> <span class='fl'>0</span>, size <span class='op'>=</span> <span class='fl'>0.3</span><span class='op'>)</span> <span class='op'>+</span>
+  <span class='fu'>geom_vline</span><span class='op'>(</span>xintercept <span class='op'>=</span> <span class='fl'>0.1</span>, color <span class='op'>=</span> <span class='st'>"black"</span>, linetype <span class='op'>=</span> <span class='st'>"dashed"</span><span class='op'>)</span> <span class='op'>+</span>
+  <span class='fu'>geom_point</span><span class='op'>(</span>size <span class='op'>=</span> <span class='fl'>4</span>, alpha <span class='op'>=</span> <span class='fl'>0.8</span><span class='op'>)</span> <span class='op'>+</span>
+  <span class='fu'>scale_x_continuous</span><span class='op'>(</span>breaks <span class='op'>=</span> <span class='fu'>scales</span><span class='fu'>::</span><span class='fu'><a href='https://scales.r-lib.org/reference/breaks_pretty.html'>pretty_breaks</a></span><span class='op'>(</span>n <span class='op'>=</span> <span class='fl'>12</span><span class='op'>)</span><span class='op'>)</span> <span class='op'>+</span>
+  <span class='fu'>scale_colour_manual</span><span class='op'>(</span>name <span class='op'>=</span> <span class='st'>"Dataset:"</span>, values <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='va'>my_blue</span>, <span class='va'>my_orange</span><span class='op'>)</span><span class='op'>)</span> <span class='op'>+</span>
+  <span class='fu'>scale_shape_manual</span><span class='op'>(</span>name <span class='op'>=</span> <span class='st'>"Dataset:"</span>, values <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='fl'>17</span>, <span class='fl'>16</span><span class='op'>)</span><span class='op'>)</span> <span class='op'>+</span>
+  <span class='fu'>xlab</span><span class='op'>(</span><span class='st'>"Standardized Mean Differences"</span><span class='op'>)</span> <span class='op'>+</span>
+  <span class='fu'>ylab</span><span class='op'>(</span><span class='st'>""</span><span class='op'>)</span> <span class='op'>+</span> 
+  <span class='fu'>theme_tufte</span><span class='op'>(</span><span class='op'>)</span> <span class='op'>+</span> 
+  <span class='fu'>theme</span><span class='op'>(</span>plot.margin <span class='op'>=</span> <span class='fu'>margin</span><span class='op'>(</span>t <span class='op'>=</span> <span class='fl'>0.25</span>, r <span class='op'>=</span> <span class='fl'>5</span>, b <span class='op'>=</span> <span class='fl'>0.25</span>, l <span class='op'>=</span> <span class='fl'>0</span>, unit <span class='op'>=</span> <span class='st'>"cm"</span><span class='op'>)</span><span class='op'>)</span>
+
+<span class='co'># display the graph</span>
+<span class='va'>graph_cpm_love_plot_cobalt</span>
+</code></pre></div>
+
+</details>![](6_constrained_pair_matching_files/figure-html5/unnamed-chunk-19-1.png)<!-- --><details>
+<summary>Please show me the code!</summary>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class='co'># save the graph</span>
+<span class='fu'>ggsave</span><span class='op'>(</span>
+  <span class='va'>graph_cpm_love_plot_cobalt</span>,
+  filename <span class='op'>=</span> <span class='fu'>here</span><span class='fu'>::</span><span class='fu'><a href='https://here.r-lib.org//reference/here.html'>here</a></span><span class='op'>(</span>
+    <span class='st'>"3.outputs"</span>,
+    <span class='st'>"2.graphs"</span>,
+    <span class='st'>"graph_cpm_love_plot_cobalt.pdf"</span>
+  <span class='op'>)</span>,
+  width <span class='op'>=</span> <span class='fl'>30</span>,
+  height <span class='op'>=</span> <span class='fl'>18</span>,
+  units <span class='op'>=</span> <span class='st'>"cm"</span>,
+  device <span class='op'>=</span> <span class='va'>cairo_pdf</span>
+<span class='op'>)</span>
+</code></pre></div>
+
+</details>
+
+</div>
+
+
+We display below the average of absolute mean differences for the matching and matched datasets:
+
+<div class="layout-chunk" data-layout="l-body-outset">
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class='va'>data_love</span> <span class='op'>%&gt;%</span>
+  <span class='fu'>group_by</span><span class='op'>(</span><span class='va'>dataset</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
+  <span class='fu'>summarise</span><span class='op'>(</span><span class='st'>"Average of Mean Differences"</span> <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/Round.html'>round</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/mean.html'>mean</a></span><span class='op'>(</span><span class='va'>standardized_difference</span><span class='op'>)</span>, <span class='fl'>2</span><span class='op'>)</span>,
+            <span class='st'>"Std. Deviation of Mean Differences"</span> <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/Round.html'>round</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/stats/sd.html'>sd</a></span><span class='op'>(</span><span class='va'>standardized_difference</span><span class='op'>)</span>, <span class='fl'>2</span><span class='op'>)</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
+  <span class='fu'><a href='https://rdrr.io/pkg/knitr/man/kable.html'>kable</a></span><span class='op'>(</span>align <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>"l"</span>, <span class='st'>"c"</span><span class='op'>)</span><span class='op'>)</span>
+</code></pre></div>
+
+
+|dataset      | Average of Mean Differences |Std. Deviation of Mean Differences |
+|:------------|:---------------------------:|:----------------------------------|
+|Initial Data |            0.16             |0.29                               |
+|Matched Data |            0.06             |0.09                               |
+
+</div>
+
+
+We can see that the average of mean differences has indeed decreased after matching.
 
 
 # Analysing Results
