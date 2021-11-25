@@ -199,8 +199,8 @@ bind_rows(output_crude_regression,
   output_adjusted_regression) %>%
   mutate(
     procedure = c(
-      "Outcome Regression Model without Covariates",
-      "Outcome Regression Model with Covariates"
+      "Outcome Regression Model without Covariates Adjustment",
+      "Outcome Regression Model with Covariates Adjustment"
     ),
     sample_size = nrow(data),
     true_effect = 230,

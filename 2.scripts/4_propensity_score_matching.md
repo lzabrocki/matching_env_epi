@@ -669,9 +669,9 @@ We finally save the data on results from propensity score analyses in the `3.out
   <span class='fu'>mutate</span><span class='op'>(</span>
     procedure <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span>
       <span class='st'>"Propensity Score without Calliper"</span>,
-      <span class='st'>"Propensity Scpre without Calliper and with Covariates Adjustment"</span>,
+      <span class='st'>"Propensity Score without Calliper and with Covariates Adjustment"</span>,
       <span class='st'>"Propensity Score with a 0.5 Calliper"</span>,
-      <span class='st'>"Propensity Score with a 0.5 Calipper and with Covariates"</span>
+      <span class='st'>"Propensity Score with a 0.5 Calipper and with Covariates Adjustment"</span>
     <span class='op'>)</span>,
     true_effect <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/rep.html'>rep</a></span><span class='op'>(</span><span class='fl'>230</span>, <span class='fl'>2</span><span class='op'>)</span>, <span class='fu'><a href='https://rdrr.io/r/base/rep.html'>rep</a></span><span class='op'>(</span><span class='va'>true_att_ps__w_calliper</span>, <span class='fl'>2</span><span class='op'>)</span><span class='op'>)</span>,
     sample_size <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/rep.html'>rep</a></span><span class='op'>(</span><span class='va'>matching_ps_no_calliper</span><span class='op'>[[</span><span class='st'>"nn"</span><span class='op'>]</span><span class='op'>]</span><span class='op'>[</span><span class='fl'>3</span><span class='op'>]</span>, <span class='fl'>2</span><span class='op'>)</span>, <span class='fu'><a href='https://rdrr.io/r/base/rep.html'>rep</a></span><span class='op'>(</span><span class='va'>matching_ps_w_calliper</span><span class='op'>[[</span><span class='st'>"nn"</span><span class='op'>]</span><span class='op'>]</span><span class='op'>[</span><span class='fl'>3</span><span class='op'>]</span>, <span class='fl'>2</span><span class='op'>)</span><span class='op'>)</span>

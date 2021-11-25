@@ -1,0 +1,101 @@
+---
+title: "Summary of Results "
+description: |
+  Detailled Script.
+author:
+  - name: Tarik Benmarhnia
+    url: https://profiles.ucsd.edu/tarik.benmarhnia
+    affiliation: UCSD & Scripps Institute
+    affiliation_url: https://benmarhniaresearch.ucsd.edu/
+  - name: Marie-Abèle Bind 
+    url: https://scholar.harvard.edu/marie-abele
+    affiliation: Biostatistics Center, Massachusetts General Hospital
+    affiliation_url: https://biostatistics.massgeneral.org/faculty/marie-abele-bind-phd/
+  - name: Léo Zabrocki 
+    url: https://lzabrocki.github.io/
+    affiliation: Paris School of Economics
+    affiliation_url: https://www.parisschoolofeconomics.eu/fr/zabrocki-leo/
+date: "`r Sys.Date()`"
+output: 
+    distill::distill_article:
+      keep_md: true
+      toc: true
+      toc_depth: 3
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+# code chunk option
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  layout = "l-body-outset",
+  dev = "CairoPNG",
+  dpi = 400
+)
+```
+
+<style>
+body {
+text-align: justify}
+</style>
+
+
+In this document, we display the results of the three matching procedures we implemented. **Should you have any questions, need help to reproduce the analysis or find coding errors, please do not hesitate to contact us at leo.zabrocki@psemail.eu**
+
+# Required Packages and Data Loading
+
+To reproduce exactly the `7_summary_results.html` document, we first need to have installed:
+
+* the [R](https://www.r-project.org/) programming language 
+* [RStudio](https://rstudio.com/), an integrated development environment for R, which will allow you to knit the `7_summary_results.Rmd` file and interact with the R code chunks
+* the [R Markdown](https://rmarkdown.rstudio.com/) package
+* and the [Distill](https://rstudio.github.io/distill/) package which provides the template for this document. 
+
+Once everything is set up, we load the following packages:
+
+```{r}
+# load required packages
+library(knitr) # for creating the R Markdown document
+library(here) # for files paths organization
+library(tidyverse) # for data manipulation and visualization
+```
+
+We load the results of the three matching procedures:
+
+```{r}
+# load and bind data
+files <- dir(
+  path = here::here("3.outputs",
+                    "1.data",
+                    "analysis_results"),
+  pattern = "*.RDS",
+  full.names = TRUE
+)
+
+data <- files %>%
+  map(~ readRDS(.))%>% 
+  reduce(rbind)  
+```
+
+# Summary Table
+
+We display below the summary of results:
+
+```{r, echo = FALSE}
+data %>%
+  mutate("95% CI" = paste(paste0("(", conf.low, ";"),  paste0(conf.high, ")"))) %>%
+  select(procedure, sample_size, true_effect, estimate, `95% CI`) %>%
+  rename(
+    "Procedure" = procedure,
+    "Sample Size" = sample_size,
+    "True Effect Size" = true_effect,
+    "Estimate" = estimate
+  ) %>%
+  kable(., align = c("l", "c", "c", "c", "c"))
+```
+
+
+

@@ -15,7 +15,7 @@ author:
     url: https://lzabrocki.github.io/
     affiliation: Paris School of Economics
     affiliation_url: https://www.parisschoolofeconomics.eu/fr/zabrocki-leo/
-date: "2021-11-24"
+date: "2021-11-25"
 output: 
     distill::distill_article:
       keep_md: true
@@ -224,8 +224,8 @@ We finally save the results from the two outcome regression models in the `3.out
   <span class='va'>output_adjusted_regression</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
   <span class='fu'>mutate</span><span class='op'>(</span>
     procedure <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span>
-      <span class='st'>"Outcome Regression Model without Covariates"</span>,
-      <span class='st'>"Outcome Regression Model with Covariates"</span>
+      <span class='st'>"Outcome Regression Model without Covariates Adjustment"</span>,
+      <span class='st'>"Outcome Regression Model with Covariates Adjustment"</span>
     <span class='op'>)</span>,
     sample_size <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/nrow.html'>nrow</a></span><span class='op'>(</span><span class='va'>data</span><span class='op'>)</span>,
     true_effect <span class='op'>=</span> <span class='fl'>230</span>,

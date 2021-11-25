@@ -393,7 +393,7 @@ We finally save the data on coarsened results in the `3.outputs/1.data/analysis_
       <span class='st'>"3.outputs"</span>,
       <span class='st'>"1.data"</span>,
       <span class='st'>"analysis_results"</span>,
-      <span class='st'>"data_analysis_cm.RDS"</span>
+      <span class='st'>"data_analysis_cem.RDS"</span>
     <span class='op'>)</span>
   <span class='op'>)</span>
 </code></pre></div>
