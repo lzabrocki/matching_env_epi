@@ -558,7 +558,7 @@ bind_rows(
       "Propensity Score with a 0.5 Calipper and with Covariates Adjustment"
     ),
     true_effect = c(rep(230, 2), rep(true_att_ps__w_calliper, 2)),
-    sample_size = c(rep(matching_ps_no_calliper[["nn"]][3], 2), rep(matching_ps_w_calliper[["nn"]][3], 2))
+    sample_size = c(rep(matching_ps_no_calliper[["nn"]][3]*2, 2), rep(matching_ps_w_calliper[["nn"]][3]*2, 2))
   ) %>%
   saveRDS(
     .,

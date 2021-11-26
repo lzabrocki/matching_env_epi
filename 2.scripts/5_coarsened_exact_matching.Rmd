@@ -337,7 +337,7 @@ bind_rows(
       "Coarsened Matching without Covariates Adjustment",
       "Coarsened Matching with Covariates Adjustment"),
     true_effect = rep(true_att, 2),
-    sample_size = rep(matching_coarsened[["nn"]][3], 2)
+    sample_size = rep(matching_coarsened[["nn"]][3]*2, 2)
   ) %>%
   saveRDS(
     .,

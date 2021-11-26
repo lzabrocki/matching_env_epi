@@ -84,13 +84,13 @@ We display below the summary of results:
 
 |Procedure                                                           | Sample Size | True Effect Size | Estimate |   95% CI   |
 |:-------------------------------------------------------------------|:-----------:|:----------------:|:--------:|:----------:|
-|Coarsened Matching without Covariates Adjustment                    |     47      |       271        |   252    | (180; 323) |
-|Coarsened Matching with Covariates Adjustment                       |     47      |       271        |   271    | (183; 358) |
+|Coarsened Matching without Covariates Adjustment                    |     94      |       271        |   252    | (180; 323) |
+|Coarsened Matching with Covariates Adjustment                       |     94      |       271        |   271    | (183; 358) |
 |Constrained Pair Matching                                           |     72      |       234        |   234    | (167; 300) |
-|Propensity Score without Calliper                                   |     122     |       230        |   284    | (230; 338) |
-|Propensity Score without Calliper and with Covariates Adjustment    |     122     |       230        |   252    | (225; 279) |
-|Propensity Score with a 0.5 Calliper                                |     96      |       245        |   245    | (186; 303) |
-|Propensity Score with a 0.5 Calipper and with Covariates Adjustment |     96      |       245        |   249    | (220; 278) |
+|Propensity Score without Calliper                                   |     244     |       230        |   284    | (230; 338) |
+|Propensity Score without Calliper and with Covariates Adjustment    |     244     |       230        |   252    | (225; 279) |
+|Propensity Score with a 0.5 Calliper                                |     192     |       245        |   245    | (186; 303) |
+|Propensity Score with a 0.5 Calipper and with Covariates Adjustment |     192     |       245        |   249    | (220; 278) |
 |Outcome Regression Model without Covariates Adjustment              |    1376     |       230        |   416    | (378; 454) |
 |Outcome Regression Model with Covariates Adjustment                 |    1376     |       230        |   293    | (279; 307) |
 

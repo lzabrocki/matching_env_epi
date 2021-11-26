@@ -385,7 +385,7 @@ We finally save the data on coarsened results in the `3.outputs/1.data/analysis_
       <span class='st'>"Coarsened Matching without Covariates Adjustment"</span>,
       <span class='st'>"Coarsened Matching with Covariates Adjustment"</span><span class='op'>)</span>,
     true_effect <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/rep.html'>rep</a></span><span class='op'>(</span><span class='va'>true_att</span>, <span class='fl'>2</span><span class='op'>)</span>,
-    sample_size <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/rep.html'>rep</a></span><span class='op'>(</span><span class='va'>matching_coarsened</span><span class='op'>[[</span><span class='st'>"nn"</span><span class='op'>]</span><span class='op'>]</span><span class='op'>[</span><span class='fl'>3</span><span class='op'>]</span>, <span class='fl'>2</span><span class='op'>)</span>
+    sample_size <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/rep.html'>rep</a></span><span class='op'>(</span><span class='va'>matching_coarsened</span><span class='op'>[[</span><span class='st'>"nn"</span><span class='op'>]</span><span class='op'>]</span><span class='op'>[</span><span class='fl'>3</span><span class='op'>]</span><span class='op'>*</span><span class='fl'>2</span>, <span class='fl'>2</span><span class='op'>)</span>
   <span class='op'>)</span> <span class='op'>%&gt;%</span>
   <span class='fu'><a href='https://rdrr.io/r/base/readRDS.html'>saveRDS</a></span><span class='op'>(</span>
     <span class='va'>.</span>,
