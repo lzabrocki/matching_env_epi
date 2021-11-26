@@ -1,5 +1,5 @@
 ---
-title: "Propensity Score Matching"
+title: "Coarsened Exact Matching"
 description: |
   Detailled Script.
 author:
@@ -144,7 +144,7 @@ matching_coarsened <-
 matching_coarsened
 ```
 
-The outputtells us that only `r matching_coarsened[["nn"]][3]` treated units were matched. We then evaluate the covariates balance using the `love.plot()` function from the cobalt package and the standardized mean difference as the summary statistic:
+The outputtells us that only `r matching_coarsened[["nn"]][3]` treated units were matched. We then evaluate the covariates balance using the `love.plot()` function from the cobalt package and the absolute mean difference as the summary statistic. For binary variables, the absolute difference in proportion is computed. For continuous covariates, denoted with a star, the absolute standardized mean difference is computed (the difference is divided by the standard deviation of the variable for treated units before matching).
 
 ```{r, fig.width = 8, fig.height = 8, code_folding="Please show me the code!"}
 # first we nicely label covariates
@@ -236,17 +236,29 @@ ggsave(
 )
 ```
 
-On this graph, we see whether covariates balance has increased for most covariates but for the year indicators. We divided the year variable in only two groups to help increase the sample size. If we increase the number of groups, we do not find similar pairs of treated and control units. The imbalance for NO$_{2}$ in $t$ is also a bit high. We display below the average of standardized mean differences:
+On this graph, we see whether covariates balance has increased for most covariates but for the year indicators. We divided the year variable in only two groups to help increase the sample size. If we increase the number of groups, we do not find similar pairs of treated and control units. The imbalance for NO$_{2}$ in $t$ is also a bit high. We display below the evolution of the average of standardized mean differences for continuous covariates:
 
 ```{r}
 graph_love_plot_cm[["data"]] %>%
+  filter(type == "Contin.") %>%
   group_by(Sample) %>%
   summarise("Average of Standardized Mean Differences" = round(mean(stat), 2),
             "Std. Deviation of Standardized Mean Differences" = round(sd(stat), 2)) %>%
   kable(align = c("l", "c"))
 ```
 
-The average standardized mean of differences is 0.1, which is about two times larger than the ones found with propensity score procedures. We are also working with a smaller number of matched units.
+We also display below the evolution of the difference in proportions for binary covariates:
+
+```{r}
+graph_love_plot_cm[["data"]] %>%
+  filter(type == "Binary") %>%
+  group_by(Sample) %>%
+  summarise("Average of Standardized Mean Differences" = round(mean(stat), 2),
+            "Std. Deviation of Standardized Mean Differences" = round(sd(stat), 2)) %>%
+  kable(align = c("l", "c"))
+```
+
+Overall, for both types of covariates, the balance has clearly improved after matching.
 
 ### Analysis of Matched Data
 

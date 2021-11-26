@@ -15,7 +15,7 @@ author:
     url: https://lzabrocki.github.io/
     affiliation: Paris School of Economics
     affiliation_url: https://www.parisschoolofeconomics.eu/fr/zabrocki-leo/
-date: "2021-11-25"
+date: "2021-11-26"
 output: 
     distill::distill_article:
       keep_md: true
@@ -691,7 +691,8 @@ We plot below the love plot for all variables used in the propensity score match
 <span class='va'>data_love_continuous</span> <span class='op'>&lt;-</span>
   <span class='fu'>left_join</span><span class='op'>(</span><span class='va'>data_abs_difference_continuous</span>, <span class='va'>data_sd_continuous</span>, by <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>"variable"</span><span class='op'>)</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
   <span class='fu'>mutate</span><span class='op'>(</span>standardized_difference <span class='op'>=</span> <span class='va'>abs_difference</span> <span class='op'>/</span> <span class='va'>sd_treatment</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
-  <span class='fu'>select</span><span class='op'>(</span><span class='op'>-</span><span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='va'>abs_difference</span>, <span class='va'>sd_treatment</span><span class='op'>)</span><span class='op'>)</span>
+  <span class='fu'>select</span><span class='op'>(</span><span class='op'>-</span><span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='va'>abs_difference</span>, <span class='va'>sd_treatment</span><span class='op'>)</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
+  <span class='fu'>mutate</span><span class='op'>(</span>type <span class='op'>=</span> <span class='st'>"continuous"</span><span class='op'>)</span>
 
 
 <span class='co'># compute absolute raw mean differences for binary covariates</span>
@@ -707,7 +708,8 @@ We plot below the love plot for all variables used in the propensity score match
 <span class='va'>data_love_binary</span> <span class='op'>&lt;-</span> <span class='va'>data_cov_binary</span> <span class='op'>%&gt;%</span>
   <span class='fu'>group_by</span><span class='op'>(</span><span class='va'>dataset</span>, <span class='va'>variable</span>, <span class='va'>is_treated</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
   <span class='fu'>summarise</span><span class='op'>(</span>mean_values <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/mean.html'>mean</a></span><span class='op'>(</span><span class='va'>values</span>, na.rm <span class='op'>=</span> <span class='cn'>TRUE</span><span class='op'>)</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
-  <span class='fu'>summarise</span><span class='op'>(</span>standardized_difference <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/MathFun.html'>abs</a></span><span class='op'>(</span><span class='va'>mean_values</span><span class='op'>[</span><span class='fl'>2</span><span class='op'>]</span> <span class='op'>-</span> <span class='va'>mean_values</span><span class='op'>[</span><span class='fl'>1</span><span class='op'>]</span><span class='op'>)</span><span class='op'>)</span>
+  <span class='fu'>summarise</span><span class='op'>(</span>standardized_difference <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/MathFun.html'>abs</a></span><span class='op'>(</span><span class='va'>mean_values</span><span class='op'>[</span><span class='fl'>2</span><span class='op'>]</span> <span class='op'>-</span> <span class='va'>mean_values</span><span class='op'>[</span><span class='fl'>1</span><span class='op'>]</span><span class='op'>)</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
+  <span class='fu'>mutate</span><span class='op'>(</span>type <span class='op'>=</span> <span class='st'>"binary"</span><span class='op'>)</span>
 
 
 <span class='co'># combine the two datasets</span>
@@ -811,10 +813,11 @@ We plot below the love plot for all variables used in the propensity score match
 </div>
 
 
-We display below the average of absolute mean differences for the matching and matched datasets:
+We display below the evolution of the average of standardized mean differences for continuous covariates:
 
 <div class="layout-chunk" data-layout="l-body-outset">
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class='va'>data_love</span> <span class='op'>%&gt;%</span>
+  <span class='fu'><a href='https://rdrr.io/r/stats/filter.html'>filter</a></span><span class='op'>(</span><span class='va'>type</span> <span class='op'>==</span> <span class='st'>"continuous"</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
   <span class='fu'>group_by</span><span class='op'>(</span><span class='va'>dataset</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
   <span class='fu'>summarise</span><span class='op'>(</span><span class='st'>"Average of Mean Differences"</span> <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/Round.html'>round</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/mean.html'>mean</a></span><span class='op'>(</span><span class='va'>standardized_difference</span><span class='op'>)</span>, <span class='fl'>2</span><span class='op'>)</span>,
             <span class='st'>"Std. Deviation of Mean Differences"</span> <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/Round.html'>round</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/stats/sd.html'>sd</a></span><span class='op'>(</span><span class='va'>standardized_difference</span><span class='op'>)</span>, <span class='fl'>2</span><span class='op'>)</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
@@ -824,14 +827,33 @@ We display below the average of absolute mean differences for the matching and m
 
 |dataset      | Average of Mean Differences |Std. Deviation of Mean Differences |
 |:------------|:---------------------------:|:----------------------------------|
-|Initial Data |            0.16             |0.29                               |
-|Matched Data |            0.06             |0.09                               |
+|Initial Data |            0.59             |0.42                               |
+|Matched Data |            0.15             |0.16                               |
 
 </div>
 
 
-We can see that the average of mean differences has indeed decreased after matching.
+We also display below the evolution of the difference in proportions for binary covariates:
 
+<div class="layout-chunk" data-layout="l-body-outset">
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class='va'>data_love</span> <span class='op'>%&gt;%</span>
+  <span class='fu'><a href='https://rdrr.io/r/stats/filter.html'>filter</a></span><span class='op'>(</span><span class='va'>type</span> <span class='op'>==</span> <span class='st'>"binary"</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
+  <span class='fu'>group_by</span><span class='op'>(</span><span class='va'>dataset</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
+  <span class='fu'>summarise</span><span class='op'>(</span><span class='st'>"Average of Mean Differences"</span> <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/Round.html'>round</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/mean.html'>mean</a></span><span class='op'>(</span><span class='va'>standardized_difference</span><span class='op'>)</span>, <span class='fl'>2</span><span class='op'>)</span>,
+            <span class='st'>"Std. Deviation of Mean Differences"</span> <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/Round.html'>round</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/stats/sd.html'>sd</a></span><span class='op'>(</span><span class='va'>standardized_difference</span><span class='op'>)</span>, <span class='fl'>2</span><span class='op'>)</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
+  <span class='fu'><a href='https://rdrr.io/pkg/knitr/man/kable.html'>kable</a></span><span class='op'>(</span>align <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>"l"</span>, <span class='st'>"c"</span><span class='op'>)</span><span class='op'>)</span>
+</code></pre></div>
+
+
+|dataset      | Average of Mean Differences |Std. Deviation of Mean Differences |
+|:------------|:---------------------------:|:----------------------------------|
+|Initial Data |            0.05             |0.07                               |
+|Matched Data |            0.04             |0.05                               |
+
+</div>
+
+
+Overall, the balance has improved for continuous covariates after matching. It is not really the case for binary variables.
 
 # Analysing Results
 

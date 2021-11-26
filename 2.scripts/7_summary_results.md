@@ -15,7 +15,7 @@ author:
     url: https://lzabrocki.github.io/
     affiliation: Paris School of Economics
     affiliation_url: https://www.parisschoolofeconomics.eu/fr/zabrocki-leo/
-date: "2021-11-25"
+date: "2021-11-26"
 output: 
     distill::distill_article:
       keep_md: true
@@ -82,17 +82,17 @@ We display below the summary of results:
 
 <div class="layout-chunk" data-layout="l-body-outset">
 
-|Procedure                                                           | Sample Size | True Effect Size | Estimate |   95% CI   |
-|:-------------------------------------------------------------------|:-----------:|:----------------:|:--------:|:----------:|
-|Coarsened Matching without Covariates Adjustment                    |     94      |       271        |   252    | (180; 323) |
-|Coarsened Matching with Covariates Adjustment                       |     94      |       271        |   271    | (183; 358) |
-|Constrained Pair Matching                                           |     72      |       234        |   234    | (167; 300) |
-|Propensity Score without Calliper                                   |     244     |       230        |   284    | (230; 338) |
-|Propensity Score without Calliper and with Covariates Adjustment    |     244     |       230        |   252    | (225; 279) |
-|Propensity Score with a 0.5 Calliper                                |     192     |       245        |   245    | (186; 303) |
-|Propensity Score with a 0.5 Calipper and with Covariates Adjustment |     192     |       245        |   249    | (220; 278) |
-|Outcome Regression Model without Covariates Adjustment              |    1376     |       230        |   416    | (378; 454) |
-|Outcome Regression Model with Covariates Adjustment                 |    1376     |       230        |   293    | (279; 307) |
+|Procedure                                                             | Sample Size | True Effect Size | Estimate |   95% CI   |
+|:---------------------------------------------------------------------|:-----------:|:----------------:|:--------:|:----------:|
+|Coarsened Matching without Covariates Adjustment                      |     94      |       271        |   252    | (180; 323) |
+|Coarsened Matching with Covariates Adjustment                         |     94      |       271        |   271    | (183; 358) |
+|Constrained Pair Matching                                             |     72      |       234        |   234    | (167; 300) |
+|Propensity Score with a 1 SD Caliper                                  |     240     |       275        |   275    | (220; 331) |
+|Propensity Score with a 1 SD Caliper and with Covariates Adjustment   |     240     |       275        |   250    | (223; 277) |
+|Propensity Score with a 0.5 SD Caliper                                |     222     |       255        |   255    | (195; 315) |
+|Propensity Score with a 0.5 SD Caliper and with Covariates Adjustment |     222     |       255        |   250    | (223; 277) |
+|Outcome Regression Model without Covariates Adjustment                |    1376     |       230        |   416    | (378; 454) |
+|Outcome Regression Model with Covariates Adjustment                   |    1376     |       230        |   293    | (279; 307) |
 
 </div>
 

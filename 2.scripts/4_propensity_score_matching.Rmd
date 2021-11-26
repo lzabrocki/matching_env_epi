@@ -102,8 +102,8 @@ We implement below a propensity score matching procedure where:
 
 We vary the matching distance to see how covariates balance change:
 
-1. We first match each treated unit to its closest control unit.
-2. We then set the maximum distance (i.e., the caliper) allowed between a treated and control unit to be inferior to 0.5 propensity score standard deviation. 
+1. We first match each treated unit to its closest control unit using a caliper equal to a 1 standard deviation of the estimated propensity scores.
+2. We then set the maximum distance to be inferior to 0.5 propensity score standard deviation. 
 
 Once treated and control units are matched, we assess whether covariates balance has improved. 
 
@@ -111,29 +111,30 @@ We finally estimate the treatment effect.
 
 ### Matching Procedure and Covariates Balance Improvement
 
-We first match each treated unit to its closest control unit without any caliper using the `matchit()` function:
+We first match each treated unit to its closest control unit with a 1 standard deviation caliper using the `matchit()` function:
 
 ```{r}
 # match without caliper
-matching_ps_no_calliper <-
+matching_ps_1_caliper <-
   matchit(
     heat_wave ~ heat_wave_lag_1 + heat_wave_lag_2 + heat_wave_lag_3 +
       o3_lag_1 + o3_lag_2 + o3_lag_3 +
       no2 + no2_lag_1 + no2_lag_2 + no2_lag_3 +
       humidity_relative + month + week + year,
+    caliper = 1,
     data = data
   )
 
 # display summary of the procedure
-matching_ps_no_calliper
+matching_ps_1_caliper
 ```
 
-The output of the matching procedure indicates us the method (1:1 nearest neighbor matching without replacement) and the distance (propensity score) we used. It also tells us how many treated units were matched: `r matching_ps_no_calliper[["nn"]][3]` (all treated units were matched). We assess how covariates balance has improved by comparing the distribution of propensity scores before and after matching: 
+The output of the matching procedure indicates us the method (1:1 nearest neighbor matching without replacement) and the distance (propensity score) we used. It also tells us how many treated units were matched: `r matching_ps_1_caliper[["nn"]][3]` (2 treated units were not matched). We assess how covariates balance has improved by comparing the distribution of propensity scores before and after matching: 
 
 ```{r, fig.width = 10, fig.height = 6, code_folding="Please show me the code!"}
 # distribution of propensity scores
 graph_propensity_score_distribution_1 <- bal.plot(
-  matching_ps_no_calliper,
+  matching_ps_1_caliper,
   var.name = "distance",
   which = "both",
   sample.names = c("Initial Data", "Matched Data"),
@@ -165,7 +166,7 @@ ggsave(
 )
 ```
 
-We see on this graph that propensity scores distribution for the two groups better overlap after matching. We can also evaluate the covariates balance using the `love.plot()` function from the cobalt package and the standardized mean difference as the summary statistic:
+We see on this graph that propensity scores distribution for the two groups better overlap after matching. We can also evaluate the covariates balance using the `love.plot()` function from the cobalt package and the absolute mean difference as the summary statistic. For binary variables, the absolute difference in proportion is computed. For continuous covariates, denoted with a star, the absolute standardized mean difference is computed (the difference is divided by the standard deviation of the variable for treated units before matching).
 
 ```{r, fig.width = 8, fig.height = 8, code_folding="Please show me the code!"}
 # first we nicely label covariates
@@ -220,7 +221,7 @@ cov_labels <- c(
 
 # make the love plot
 graph_love_plot_ps_1 <- love.plot(
-  matching_ps_no_calliper,
+  matching_ps_1_caliper,
   drop.distance = TRUE,
   abs = TRUE,
   var.order = "unadjusted",
@@ -255,40 +256,54 @@ ggsave(
 )
 ```
 
-On this graph, we can see that for most covariates balance has improved after matching---yet, for few covariates, the standardized mean difference has increased. Overall, the average of standardized mean differences has decreased after matching:
+On this graph, we can see that for most covariates balance has improved after matching---yet, for few covariates, the standardized mean difference has increased. We display below the evolution of the average of standardized mean differences for continuous covariates:
 
 ```{r}
 graph_love_plot_ps_1[["data"]] %>%
+  filter(type == "Contin.") %>%
   group_by(Sample) %>%
   summarise("Average of Standardized Mean Differences" = round(mean(stat), 2),
             "Std. Deviation of Standardized Mean Differences" = round(sd(stat), 2)) %>%
   kable(align = c("l", "c"))
 ```
 
-Until now, we matched each treated unit to its closest control unit: we could however make sure that a treated unit is not matched to a control unit which is too much different. We do so by setting a caliper, the maximum distance in terms of propensity score standard deviation allowed between a treated and control. We implement below the same propensity score matching but with a caliper of 0.5:
+We also display below the evolution of the difference in proportions for binary covariates:
+
+```{r}
+graph_love_plot_ps_1[["data"]] %>%
+  filter(type == "Binary") %>%
+  group_by(Sample) %>%
+  summarise("Average of Standardized Mean Differences" = round(mean(stat), 2),
+            "Std. Deviation of Standardized Mean Differences" = round(sd(stat), 2)) %>%
+  kable(align = c("l", "c"))
+```
+
+Overall, for both types of covariates, the balance has clearly improved after matching.
+
+Until now, we matched each treated unit to its closest control unit according to 1 standard deviation caliper: we could however make sure that a treated unit is not matched to a control unit which is too much different. We do so by setting a caliper of 0.5 standard deviation:
 
 ```{r}
 # match without caliper
-matching_ps_w_calliper <-
+matching_ps_0.5_caliper <-
   matchit(
     heat_wave ~ heat_wave_lag_1 + heat_wave_lag_2 + heat_wave_lag_3 +
       o3_lag_1 + o3_lag_2 + o3_lag_3 +
       no2 + no2_lag_1 + no2_lag_2 + no2_lag_3 +
       humidity_relative + month + week + year,
-    caliper = 0.1,
+    caliper = 0.5,
     data = data
   )
 
 # display summary of the procedure
-matching_ps_w_calliper
+matching_ps_0.5_caliper
 ```
 
-Compared to the matching without caliper, there are now `r matching_ps_w_calliper[["nn"]][3]`` matched treated units. We can check whether the propensity score distributions overlap better:
+Compared to the matching with a 1 standard deivation caliper, there are now `r matching_ps_0.5_caliper[["nn"]][3]` matched treated units. We can check whether the propensity score distributions overlap better:
 
 ```{r, fig.width = 10, fig.height = 6, code_folding="Please show me the code!"}
 # distribution of propensity scores
 graph_propensity_score_distribution_2 <- bal.plot(
-  matching_ps_w_calliper,
+  matching_ps_0.5_caliper,
   var.name = "distance",
   which = "both",
   sample.names = c("Initial Data", "Matched Data"),
@@ -298,7 +313,7 @@ graph_propensity_score_distribution_2 <- bal.plot(
   xlab("Propensity Scores") +
   scale_fill_manual(
     name = "Group:",
-    values = c(my_orange, my_blue),
+    values = c(my_blue, my_orange),
     labels = c("Days without Heat Waves", "Days with Heat Waves")
   ) +
   theme_tufte()
@@ -329,8 +344,8 @@ graph_love_plot_ps_2 <- love.plot(
   heat_wave ~ heat_wave_lag_1 + heat_wave_lag_2 + heat_wave_lag_3 + o3_lag_1 + o3_lag_2 + o3_lag_3 + no2 + no2_lag_1 + no2_lag_2 + no2_lag_3 + humidity_relative + month + week + year,
   data = data,
   estimand = "ATT",
-  weights = list("Without Caliper" = matching_ps_no_calliper,
-                 "With Caliper" = matching_ps_w_calliper),
+  weights = list("Without Caliper" = matching_ps_1_caliper,
+                 "With Caliper" = matching_ps_0.5_caliper),
   drop.distance = TRUE,
   abs = TRUE,
   var.order = "unadjusted",
@@ -365,18 +380,29 @@ ggsave(
 )
 ```
 
-On this graph, it is not clear to see whether covariates balance has really increased. We display below the average of standardized mean differences for the three datasets:
+On this graph, it is not clear to see whether covariates balance has really increased. We display below, for continuous covariates, the average of standardized mean differences for the three datasets:
 
 ```{r}
 graph_love_plot_ps_2[["data"]] %>%
+  filter(type == "Contin.") %>%
   group_by(Sample) %>%
   summarise("Average of Standardized Mean Differences" = round(mean(stat), 2),
             "Std. Deviation of Standardized Mean Differences" = round(sd(stat), 2)) %>%
   kable(align = c("l", "c"))
 ```
 
-We can see that the average of standardized mean differences is 0.01 higher when using a caliper than without one.
+We can see that the average of standardized mean differences is 0.01 higher when using a 0.5 SD caliper than with a 1 SD caliper. We also display below the evolution of the difference in proportions for binary covariates:
 
+```{r}
+graph_love_plot_ps_2[["data"]] %>%
+  filter(type == "Binary") %>%
+  group_by(Sample) %>%
+  summarise("Average of Standardized Mean Differences" = round(mean(stat), 2),
+            "Std. Deviation of Standardized Mean Differences" = round(sd(stat), 2)) %>%
+  kable(align = c("l", "c"))
+```
+
+Again, the stricter matching procedure did not help improve the balance of binary covariates.
 
 We finally save the data on covariates balance in the `3.outputs/1.data/covariates_balance` folder.
 
@@ -395,20 +421,28 @@ saveRDS(
 
 ### Analysis of Matched Data
 
-We now move to the analysis of the matched datasets using a simple regression model where we first regression the YoLL on the treatment indicator. We start with the matched data resulting from the propensity score without caliper:
+We now move to the analysis of the matched datasets using a simple regression model where we first regression the YoLL on the treatment indicator. We start with the matched data resulting from the propensity score with a 1 SD caliper. It is very important to note that the target causal estimand is not anymore the the average treatment on the treated as not all treated units could be matched to similar control units (2 treated units could not be matched). To know the true causal effect for the match data, we compute the mean difference in potential outcomes:
 
 ```{r}
 # we retrieve the matched data
-data_ps_no_calliper <- match.data(matching_ps_no_calliper)
+data_ps_1_caliper <- match.data(matching_ps_1_caliper)
 
+# compute the true effect for the data
+true_att_ps_1_caliper <-
+  round(mean(data_ps_1_caliper$y_1[data_ps_1_caliper$heat_wave == 1] - data_ps_1_caliper$y_0[data_ps_1_caliper$heat_wave == 0]), 0)
+```
+
+The true effect for this match data is equal to +`r true_att_ps_1_caliper` YoLL, which is different for the true effect of 230 YoLL on **all** treated units. If we estimate this effect with a simple linear regression model, we get:
+
+```{r}
 # we fit the regression model
-model_ps_no_calliper <- lm(y_obs ~ heat_wave,
-                           data = data_ps_no_calliper,
+model_ps_1_caliper <- lm(y_obs ~ heat_wave,
+                           data = data_ps_1_caliper,
                            weights = weights)
 
 # retrieve the estimate and 95% ci
-results_ps_no_calliper <- tidy(coeftest(
-  model_ps_no_calliper,
+results_ps_1_caliper <- tidy(coeftest(
+  model_ps_1_caliper,
   vcov. = vcovCL,
   cluster = ~ subclass
 ),
@@ -418,7 +452,7 @@ conf.int = TRUE) %>%
   mutate_at(vars(estimate:conf.high), ~ round(., 0))
 
 # display results
-results_ps_no_calliper %>%
+results_ps_1_caliper %>%
   rename(
     "Term" = term,
     "Estimate" = estimate,
@@ -428,20 +462,20 @@ results_ps_no_calliper %>%
   kable(., align = c("l", "c", "c", "c"))
 ```
 
-We find that the average effect on the treated is equal to +`r results_ps_no_calliper$estimate` years of life lost. The 95% confidence interval is consistent with effects ranging from +`r results_ps_no_calliper$conf.low` up to +`r results_ps_no_calliper$conf.high`. The estimate of the ATT is still far from the the true effect of +230 YoLL. If we want to increase the precision of our estimate and remove any remaining imbalance in covariates, we can also run a multivariate regression. We adjust below for the same variables used in the estimation of propensity scores:
+We find that the average effect on the treated is equal to +`r results_ps_1_caliper$estimate` years of life lost, which is the true causal effect. The 95% confidence interval is consistent with effects ranging from +`r results_ps_1_caliper$conf.low` up to +`r results_ps_1_caliper$conf.high`. If we want to increase the precision of our estimate and remove any remaining imbalance in covariates, we can also run a multivariate regression. We adjust below for the same variables used in the estimation of propensity scores:
 
 ```{r}
 # we fit the regression model
-model_ps_no_calliper_w_cov <-
+model_ps_1_caliper_w_cov <-
   lm(
     y_obs ~ heat_wave + heat_wave_lag_1 + heat_wave_lag_2 + heat_wave_lag_3 + o3_lag_1 + o3_lag_2 + o3_lag_3 + no2 + no2_lag_1 + no2_lag_2 + no2_lag_3 + humidity_relative + month + week + year,
-    data = data_ps_no_calliper,
+    data = data_ps_1_caliper,
     weights = weights
   )
 
 # retrieve the estimate and 95% ci
-results_ps_no_calliper_w_cov <- tidy(coeftest(
-  model_ps_no_calliper_w_cov,
+results_ps_1_caliper_w_cov <- tidy(coeftest(
+  model_ps_1_caliper_w_cov,
   vcov. = vcovCL,
   cluster = ~ subclass
 ),
@@ -451,7 +485,7 @@ conf.int = TRUE) %>%
   mutate_at(vars(estimate:conf.high), ~ round(., 0))
 
 # display results
-results_ps_no_calliper_w_cov %>%
+results_ps_1_caliper_w_cov %>%
   rename(
     "Term" = term,
     "Estimate" = estimate,
@@ -462,30 +496,30 @@ results_ps_no_calliper_w_cov %>%
 ```
 
 
-We find that the average effect on the treated is equal to +`r results_ps_no_calliper_w_cov$estimate` years of life lost: the estimate is closer to the true effect. The 95% confidence interval is consistent with effects ranging from +`r results_ps_no_calliper_w_cov$conf.low` up to +`r results_ps_no_calliper_w_cov$conf.high`. The width of confidence interval is now equal to `r results_ps_no_calliper_w_cov$conf.high - results_ps_no_calliper_w_cov$conf.low`, which is half smaller than the previous interval of `r results_ps_no_calliper$conf.high - results_ps_no_calliper$conf.low`.
+We find that the average effect on the treated is equal to +`r results_ps_1_caliper_w_cov$estimate` years of life lost: the estimate is now further away from the true effect. The 95% confidence interval is consistent with effects ranging from +`r results_ps_1_caliper_w_cov$conf.low` up to +`r results_ps_1_caliper_w_cov$conf.high`. The width of confidence interval is now equal to `r results_ps_1_caliper_w_cov$conf.high - results_ps_1_caliper_w_cov$conf.low`, which is about half smaller than the previous interval of `r results_ps_1_caliper$conf.high - results_ps_1_caliper$conf.low`.
 
-We also estimate the treatment effect for the matched dataset resulting from the matching procedure with a caliper. It is very important to note that the target causal estimand is not anymore the the average treatment on the treated as not all treated units could be matched to similar control units. To know the true causal effect for the match data, we compute the mean difference in potential outcomes:
+We also estimate the treatment effect for the matched dataset resulting from the matching procedure with a 0.5 caliper. Again, it is very important to note that the target causal estimand is not anymore the the average treatment on the treated as not all treated units could be matched to similar control units: `r matching_ps_0.5_caliper[["nn"]][3]` treated units were matched. To know the true causal effect for the match data, we compute the mean difference in potential outcomes:
 
 ```{r}
 # we retrieve the matched data
-data_ps_w_calliper <- match.data(matching_ps_w_calliper)
+data_ps_0.5_caliper <- match.data(matching_ps_0.5_caliper)
 
 # compute the true effect for the data
-true_att_ps__w_calliper <-
-  round(mean(data_ps_w_calliper$y_1[data_ps_w_calliper$heat_wave == 1] - data_ps_w_calliper$y_0[data_ps_w_calliper$heat_wave == 0]), 0)
+true_att_ps_0.5_caliper <-
+  round(mean(data_ps_0.5_caliper$y_1[data_ps_0.5_caliper$heat_wave == 1] - data_ps_0.5_caliper$y_0[data_ps_0.5_caliper$heat_wave == 0]), 0)
 ```
 
-The true effect for this match data is equal to +`r true_att_ps__w_calliper` YoLL, which is different for the true effect on **all** treated units. If we estimate this effect with a simple linear regression model, we get:
+The true effect for this match data is equal to +`r true_att_ps_0.5_caliper` YoLL, which is different for the true effect on **all** treated units and of the matched dataset for a 1 SD caliper. If we estimate this effect with a simple linear regression model, we get:
 
 ```{r}
 # we fit the regression model
-model_ps_w_calliper <- lm(y_obs ~ heat_wave,
-                          data = data_ps_w_calliper,
+model_ps_0.5_caliper <- lm(y_obs ~ heat_wave,
+                          data = data_ps_0.5_caliper,
                           weights = weights)
 
 # retrieve the estimate and 95% ci
-results_ps_w_calliper <- tidy(coeftest(
-  model_ps_w_calliper,
+results_ps_0.5_caliper <- tidy(coeftest(
+  model_ps_0.5_caliper,
   vcov. = vcovCL,
   cluster = ~ subclass
 ),
@@ -495,7 +529,7 @@ conf.int = TRUE) %>%
   mutate_at(vars(estimate:conf.high), ~ round(., 0))
 
 # display results
-results_ps_w_calliper %>%
+results_ps_0.5_caliper %>%
   rename(
     "Term" = term,
     "Estimate" = estimate,
@@ -505,20 +539,20 @@ results_ps_w_calliper %>%
   kable(., align = c("l", "c", "c", "c"))
 ```
 
-The estimated is exactly equal to the true effect of +`r true_att_ps__w_calliper`. The 95% confidence interval is consistent with effects ranging from +`r results_ps_w_calliper$conf.low` up to +`r results_ps_w_calliper$conf.high`. We finally run the regression model where we adjust for covariates:
+The estimated is exactly equal to the true effect of +`r true_att_ps_0.5_caliper`. The 95% confidence interval is consistent with effects ranging from +`r results_ps_0.5_caliper$conf.low` up to +`r results_ps_0.5_caliper$conf.high`. We finally run the regression model where we adjust for covariates:
 
 ```{r}
 # we fit the regression model
-model_ps_w_calliper_w_cov <-
+model_ps_0.5_caliper_w_cov <-
   lm(
     y_obs ~ heat_wave + heat_wave_lag_1 + heat_wave_lag_2 + heat_wave_lag_3 + o3_lag_1 + o3_lag_2 + o3_lag_3 + no2 + no2_lag_1 + no2_lag_2 + no2_lag_3 + humidity_relative + month + week + year,
-    data = data_ps_w_calliper,
+    data = data_ps_0.5_caliper,
     weights = weights
   )
 
 # retrieve the estimate and 95% ci
-results_ps_w_calliper_w_cov <- tidy(coeftest(
-  model_ps_w_calliper_w_cov,
+results_ps_0.5_caliper_w_cov <- tidy(coeftest(
+  model_ps_0.5_caliper_w_cov,
   vcov. = vcovCL,
   cluster = ~ subclass
 ),
@@ -528,7 +562,7 @@ conf.int = TRUE) %>%
   mutate_at(vars(estimate:conf.high), ~ round(., 0))
 
 # display results
-results_ps_w_calliper_w_cov %>%
+results_ps_0.5_caliper_w_cov %>%
   rename(
     "Term" = term,
     "Estimate" = estimate,
@@ -538,27 +572,27 @@ results_ps_w_calliper_w_cov %>%
   kable(., align = c("l", "c", "c", "c"))
 ```
 
-We find that the average effect on the treated is equal to +`r results_ps_w_calliper_w_cov$estimate` years of life lost: the estimate is still very close to the true effect. The 95% confidence interval is consistent with effects ranging from +`r results_ps_w_calliper_w_cov$conf.low` up to +`r results_ps_w_calliper_w_cov$conf.high`. The width of confidence interval is now equal to `r results_ps_w_calliper_w_cov$conf.high - results_ps_w_calliper_w_cov$conf.low`, which is half smaller than the previous interval of `r results_ps_w_calliper$conf.high - results_ps_w_calliper$conf.low`.
+We find that the average effect on the treated is equal to +`r results_ps_0.5_caliper_w_cov$estimate` years of life lost: the estimate is still very close to the true effect. The 95% confidence interval is consistent with effects ranging from +`r results_ps_0.5_caliper_w_cov$conf.low` up to +`r results_ps_0.5_caliper_w_cov$conf.high`. The width of confidence interval is now equal to `r results_ps_0.5_caliper_w_cov$conf.high - results_ps_0.5_caliper_w_cov$conf.low`, which is absout half smaller than the previous interval of `r results_ps_0.5_caliper$conf.high - results_ps_0.5_caliper$conf.low`.
 
 
 We finally save the data on results from propensity score analyses in the `3.outputs/1.data/analysis_results` folder.
 
 ```{r}
 bind_rows(
-  results_ps_no_calliper,
-  results_ps_no_calliper_w_cov,
-  results_ps_w_calliper,
-  results_ps_w_calliper_w_cov
+  results_ps_1_caliper,
+  results_ps_1_caliper_w_cov,
+  results_ps_0.5_caliper,
+  results_ps_0.5_caliper_w_cov
 ) %>%
   mutate(
     procedure = c(
-      "Propensity Score without Calliper",
-      "Propensity Score without Calliper and with Covariates Adjustment",
-      "Propensity Score with a 0.5 Calliper",
-      "Propensity Score with a 0.5 Calipper and with Covariates Adjustment"
+      "Propensity Score with a 1 SD Caliper",
+      "Propensity Score with a 1 SD Caliper and with Covariates Adjustment",
+      "Propensity Score with a 0.5 SD Caliper",
+      "Propensity Score with a 0.5 SD Caliper and with Covariates Adjustment"
     ),
-    true_effect = c(rep(230, 2), rep(true_att_ps__w_calliper, 2)),
-    sample_size = c(rep(matching_ps_no_calliper[["nn"]][3]*2, 2), rep(matching_ps_w_calliper[["nn"]][3]*2, 2))
+    true_effect = c(rep(true_att_ps_1_caliper, 2), rep(true_att_ps_0.5_caliper, 2)),
+    sample_size = c(rep(matching_ps_1_caliper[["nn"]][3]*2, 2), rep(matching_ps_0.5_caliper[["nn"]][3]*2, 2))
   ) %>%
   saveRDS(
     .,

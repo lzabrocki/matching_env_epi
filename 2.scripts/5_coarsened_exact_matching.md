@@ -1,5 +1,5 @@
 ---
-title: "Propensity Score Matching"
+title: "Coarsened Exact Matching"
 description: |
   Detailled Script.
 author:
@@ -15,7 +15,7 @@ author:
     url: https://lzabrocki.github.io/
     affiliation: Paris School of Economics
     affiliation_url: https://www.parisschoolofeconomics.eu/fr/zabrocki-leo/
-date: "2021-11-25"
+date: "2021-11-26"
 output: 
     distill::distill_article:
       keep_md: true
@@ -154,7 +154,7 @@ A matchit object
 </div>
 
 
-The outputtells us that only 47 treated units were matched. We then evaluate the covariates balance using the `love.plot()` function from the cobalt package and the standardized mean difference as the summary statistic:
+The outputtells us that only 47 treated units were matched. We then evaluate the covariates balance using the `love.plot()` function from the cobalt package and the absolute mean difference as the summary statistic. For binary variables, the absolute difference in proportion is computed. For continuous covariates, denoted with a star, the absolute standardized mean difference is computed (the difference is divided by the standard deviation of the variable for treated units before matching).
 
 <div class="layout-chunk" data-layout="l-body-outset">
 <details>
@@ -256,10 +256,11 @@ The outputtells us that only 47 treated units were matched. We then evaluate the
 </div>
 
 
-On this graph, we see whether covariates balance has increased for most covariates but for the year indicators. We divided the year variable in only two groups to help increase the sample size. If we increase the number of groups, we do not find similar pairs of treated and control units. The imbalance for NO$_{2}$ in $t$ is also a bit high. We display below the average of standardized mean differences:
+On this graph, we see whether covariates balance has increased for most covariates but for the year indicators. We divided the year variable in only two groups to help increase the sample size. If we increase the number of groups, we do not find similar pairs of treated and control units. The imbalance for NO$_{2}$ in $t$ is also a bit high. We display below the evolution of the average of standardized mean differences for continuous covariates:
 
 <div class="layout-chunk" data-layout="l-body-outset">
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class='va'>graph_love_plot_cm</span><span class='op'>[[</span><span class='st'>"data"</span><span class='op'>]</span><span class='op'>]</span> <span class='op'>%&gt;%</span>
+  <span class='fu'><a href='https://rdrr.io/r/stats/filter.html'>filter</a></span><span class='op'>(</span><span class='va'>type</span> <span class='op'>==</span> <span class='st'>"Contin."</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
   <span class='fu'>group_by</span><span class='op'>(</span><span class='va'>Sample</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
   <span class='fu'>summarise</span><span class='op'>(</span><span class='st'>"Average of Standardized Mean Differences"</span> <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/Round.html'>round</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/mean.html'>mean</a></span><span class='op'>(</span><span class='va'>stat</span><span class='op'>)</span>, <span class='fl'>2</span><span class='op'>)</span>,
             <span class='st'>"Std. Deviation of Standardized Mean Differences"</span> <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/Round.html'>round</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/stats/sd.html'>sd</a></span><span class='op'>(</span><span class='va'>stat</span><span class='op'>)</span>, <span class='fl'>2</span><span class='op'>)</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
@@ -269,13 +270,33 @@ On this graph, we see whether covariates balance has increased for most covariat
 
 |Sample       | Average of Standardized Mean Differences |Std. Deviation of Standardized Mean Differences |
 |:------------|:----------------------------------------:|:-----------------------------------------------|
-|Initial Data |                   0.13                   |0.21                                            |
-|Matched Data |                   0.03                   |0.04                                            |
+|Initial Data |                   0.49                   |0.29                                            |
+|Matched Data |                   0.06                   |0.04                                            |
 
 </div>
 
 
-The average standardized mean of differences is 0.1, which is about two times larger than the ones found with propensity score procedures. We are also working with a smaller number of matched units.
+We also display below the evolution of the difference in proportions for binary covariates:
+
+<div class="layout-chunk" data-layout="l-body-outset">
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class='va'>graph_love_plot_cm</span><span class='op'>[[</span><span class='st'>"data"</span><span class='op'>]</span><span class='op'>]</span> <span class='op'>%&gt;%</span>
+  <span class='fu'><a href='https://rdrr.io/r/stats/filter.html'>filter</a></span><span class='op'>(</span><span class='va'>type</span> <span class='op'>==</span> <span class='st'>"Binary"</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
+  <span class='fu'>group_by</span><span class='op'>(</span><span class='va'>Sample</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
+  <span class='fu'>summarise</span><span class='op'>(</span><span class='st'>"Average of Standardized Mean Differences"</span> <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/Round.html'>round</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/mean.html'>mean</a></span><span class='op'>(</span><span class='va'>stat</span><span class='op'>)</span>, <span class='fl'>2</span><span class='op'>)</span>,
+            <span class='st'>"Std. Deviation of Standardized Mean Differences"</span> <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/Round.html'>round</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/stats/sd.html'>sd</a></span><span class='op'>(</span><span class='va'>stat</span><span class='op'>)</span>, <span class='fl'>2</span><span class='op'>)</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
+  <span class='fu'><a href='https://rdrr.io/pkg/knitr/man/kable.html'>kable</a></span><span class='op'>(</span>align <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>"l"</span>, <span class='st'>"c"</span><span class='op'>)</span><span class='op'>)</span>
+</code></pre></div>
+
+
+|Sample       | Average of Standardized Mean Differences |Std. Deviation of Standardized Mean Differences |
+|:------------|:----------------------------------------:|:-----------------------------------------------|
+|Initial Data |                   0.05                   |0.07                                            |
+|Matched Data |                   0.02                   |0.03                                            |
+
+</div>
+
+
+Overall, for both types of covariates, the balance has clearly improved after matching.
 
 ### Analysis of Matched Data
 

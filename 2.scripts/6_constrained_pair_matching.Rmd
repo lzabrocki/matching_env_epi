@@ -613,7 +613,8 @@ data_sd_continuous <- data_cov_continuous %>%
 data_love_continuous <-
   left_join(data_abs_difference_continuous, data_sd_continuous, by = c("variable")) %>%
   mutate(standardized_difference = abs_difference / sd_treatment) %>%
-  select(-c(abs_difference, sd_treatment))
+  select(-c(abs_difference, sd_treatment)) %>%
+  mutate(type = "continuous")
 
 
 # compute absolute raw mean differences for binary covariates
@@ -629,7 +630,8 @@ data_cov_binary <- data %>%
 data_love_binary <- data_cov_binary %>%
   group_by(dataset, variable, is_treated) %>%
   summarise(mean_values = mean(values, na.rm = TRUE)) %>%
-  summarise(standardized_difference = abs(mean_values[2] - mean_values[1]))
+  summarise(standardized_difference = abs(mean_values[2] - mean_values[1])) %>%
+  mutate(type = "binary")
 
 
 # combine the two datasets
@@ -725,18 +727,29 @@ ggsave(
 )
 ```
 
-We display below the average of absolute mean differences for the matching and matched datasets:
+We display below the evolution of the average of standardized mean differences for continuous covariates:
 
 ```{r}
 data_love %>%
+  filter(type == "continuous") %>%
   group_by(dataset) %>%
   summarise("Average of Mean Differences" = round(mean(standardized_difference), 2),
             "Std. Deviation of Mean Differences" = round(sd(standardized_difference), 2)) %>%
   kable(align = c("l", "c"))
 ```
 
-We can see that the average of mean differences has indeed decreased after matching.
+We also display below the evolution of the difference in proportions for binary covariates:
 
+```{r}
+data_love %>%
+  filter(type == "binary") %>%
+  group_by(dataset) %>%
+  summarise("Average of Mean Differences" = round(mean(standardized_difference), 2),
+            "Std. Deviation of Mean Differences" = round(sd(standardized_difference), 2)) %>%
+  kable(align = c("l", "c"))
+```
+
+Overall, the balance has improved for continuous covariates after matching. It is not really the case for binary variables.
 
 # Analysing Results
 

@@ -15,7 +15,7 @@ author:
     url: https://lzabrocki.github.io/
     affiliation: Paris School of Economics
     affiliation_url: https://www.parisschoolofeconomics.eu/fr/zabrocki-leo/
-date: "2021-11-25"
+date: "2021-11-26"
 output: 
     distill::distill_article:
       keep_md: true
@@ -101,8 +101,8 @@ We implement below a propensity score matching procedure where:
 
 We vary the matching distance to see how covariates balance change:
 
-1. We first match each treated unit to its closest control unit.
-2. We then set the maximum distance (i.e., the caliper) allowed between a treated and control unit to be inferior to 0.5 propensity score standard deviation. 
+1. We first match each treated unit to its closest control unit using a caliper equal to a 1 standard deviation of the estimated propensity scores.
+2. We then set the maximum distance to be inferior to 0.5 propensity score standard deviation. 
 
 Once treated and control units are matched, we assess whether covariates balance has improved. 
 
@@ -110,29 +110,31 @@ We finally estimate the treatment effect.
 
 ### Matching Procedure and Covariates Balance Improvement
 
-We first match each treated unit to its closest control unit without any caliper using the `matchit()` function:
+We first match each treated unit to its closest control unit with a 1 standard deviation caliper using the `matchit()` function:
 
 <div class="layout-chunk" data-layout="l-body-outset">
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class='co'># match without caliper</span>
-<span class='va'>matching_ps_no_calliper</span> <span class='op'>&lt;-</span>
+<span class='va'>matching_ps_1_caliper</span> <span class='op'>&lt;-</span>
   <span class='fu'><a href='https://kosukeimai.github.io/MatchIt/reference/matchit.html'>matchit</a></span><span class='op'>(</span>
     <span class='va'>heat_wave</span> <span class='op'>~</span> <span class='va'>heat_wave_lag_1</span> <span class='op'>+</span> <span class='va'>heat_wave_lag_2</span> <span class='op'>+</span> <span class='va'>heat_wave_lag_3</span> <span class='op'>+</span>
       <span class='va'>o3_lag_1</span> <span class='op'>+</span> <span class='va'>o3_lag_2</span> <span class='op'>+</span> <span class='va'>o3_lag_3</span> <span class='op'>+</span>
       <span class='va'>no2</span> <span class='op'>+</span> <span class='va'>no2_lag_1</span> <span class='op'>+</span> <span class='va'>no2_lag_2</span> <span class='op'>+</span> <span class='va'>no2_lag_3</span> <span class='op'>+</span>
       <span class='va'>humidity_relative</span> <span class='op'>+</span> <span class='va'>month</span> <span class='op'>+</span> <span class='va'>week</span> <span class='op'>+</span> <span class='va'>year</span>,
+    caliper <span class='op'>=</span> <span class='fl'>1</span>,
     data <span class='op'>=</span> <span class='va'>data</span>
   <span class='op'>)</span>
 
 <span class='co'># display summary of the procedure</span>
-<span class='va'>matching_ps_no_calliper</span>
+<span class='va'>matching_ps_1_caliper</span>
 </code></pre></div>
 
 ```
 A matchit object
  - method: 1:1 nearest neighbor matching without replacement
- - distance: Propensity score
+ - distance: Propensity score [caliper]
              - estimated with logistic regression
- - number of obs.: 1376 (original), 244 (matched)
+ - caliper: <distance> (0.157)
+ - number of obs.: 1376 (original), 240 (matched)
  - target estimand: ATT
  - covariates: heat_wave_lag_1, heat_wave_lag_2, heat_wave_lag_3, o3_lag_1, o3_lag_2, o3_lag_3, no2, no2_lag_1, no2_lag_2, no2_lag_3, humidity_relative, month, week, year
 ```
@@ -140,14 +142,14 @@ A matchit object
 </div>
 
 
-The output of the matching procedure indicates us the method (1:1 nearest neighbor matching without replacement) and the distance (propensity score) we used. It also tells us how many treated units were matched: 122 (all treated units were matched). We assess how covariates balance has improved by comparing the distribution of propensity scores before and after matching: 
+The output of the matching procedure indicates us the method (1:1 nearest neighbor matching without replacement) and the distance (propensity score) we used. It also tells us how many treated units were matched: 120 (2 treated units were not matched). We assess how covariates balance has improved by comparing the distribution of propensity scores before and after matching: 
 
 <div class="layout-chunk" data-layout="l-body-outset">
 <details>
 <summary>Please show me the code!</summary>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class='co'># distribution of propensity scores</span>
 <span class='va'>graph_propensity_score_distribution_1</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://ngreifer.github.io/cobalt/reference/bal.plot.html'>bal.plot</a></span><span class='op'>(</span>
-  <span class='va'>matching_ps_no_calliper</span>,
+  <span class='va'>matching_ps_1_caliper</span>,
   var.name <span class='op'>=</span> <span class='st'>"distance"</span>,
   which <span class='op'>=</span> <span class='st'>"both"</span>,
   sample.names <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>"Initial Data"</span>, <span class='st'>"Matched Data"</span><span class='op'>)</span>,
@@ -187,7 +189,7 @@ The output of the matching procedure indicates us the method (1:1 nearest neighb
 </div>
 
 
-We see on this graph that propensity scores distribution for the two groups better overlap after matching. We can also evaluate the covariates balance using the `love.plot()` function from the cobalt package and the standardized mean difference as the summary statistic:
+We see on this graph that propensity scores distribution for the two groups better overlap after matching. We can also evaluate the covariates balance using the `love.plot()` function from the cobalt package and the absolute mean difference as the summary statistic. For binary variables, the absolute difference in proportion is computed. For continuous covariates, denoted with a star, the absolute standardized mean difference is computed (the difference is divided by the standard deviation of the variable for treated units before matching).
 
 <div class="layout-chunk" data-layout="l-body-outset">
 <details>
@@ -244,7 +246,7 @@ We see on this graph that propensity scores distribution for the two groups bett
 
 <span class='co'># make the love plot</span>
 <span class='va'>graph_love_plot_ps_1</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://ngreifer.github.io/cobalt/reference/love.plot.html'>love.plot</a></span><span class='op'>(</span>
-  <span class='va'>matching_ps_no_calliper</span>,
+  <span class='va'>matching_ps_1_caliper</span>,
   drop.distance <span class='op'>=</span> <span class='cn'>TRUE</span>,
   abs <span class='op'>=</span> <span class='cn'>TRUE</span>,
   var.order <span class='op'>=</span> <span class='st'>"unadjusted"</span>,
@@ -287,10 +289,11 @@ We see on this graph that propensity scores distribution for the two groups bett
 </div>
 
 
-On this graph, we can see that for most covariates balance has improved after matching---yet, for few covariates, the standardized mean difference has increased. Overall, the average of standardized mean differences has decreased after matching:
+On this graph, we can see that for most covariates balance has improved after matching---yet, for few covariates, the standardized mean difference has increased. We display below the evolution of the average of standardized mean differences for continuous covariates:
 
 <div class="layout-chunk" data-layout="l-body-outset">
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class='va'>graph_love_plot_ps_1</span><span class='op'>[[</span><span class='st'>"data"</span><span class='op'>]</span><span class='op'>]</span> <span class='op'>%&gt;%</span>
+  <span class='fu'><a href='https://rdrr.io/r/stats/filter.html'>filter</a></span><span class='op'>(</span><span class='va'>type</span> <span class='op'>==</span> <span class='st'>"Contin."</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
   <span class='fu'>group_by</span><span class='op'>(</span><span class='va'>Sample</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
   <span class='fu'>summarise</span><span class='op'>(</span><span class='st'>"Average of Standardized Mean Differences"</span> <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/Round.html'>round</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/mean.html'>mean</a></span><span class='op'>(</span><span class='va'>stat</span><span class='op'>)</span>, <span class='fl'>2</span><span class='op'>)</span>,
             <span class='st'>"Std. Deviation of Standardized Mean Differences"</span> <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/Round.html'>round</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/stats/sd.html'>sd</a></span><span class='op'>(</span><span class='va'>stat</span><span class='op'>)</span>, <span class='fl'>2</span><span class='op'>)</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
@@ -300,28 +303,50 @@ On this graph, we can see that for most covariates balance has improved after ma
 
 |Sample       | Average of Standardized Mean Differences |Std. Deviation of Standardized Mean Differences |
 |:------------|:----------------------------------------:|:-----------------------------------------------|
-|Initial Data |                   0.13                   |0.21                                            |
-|Matched Data |                   0.02                   |0.03                                            |
+|Initial Data |                   0.49                   |0.29                                            |
+|Matched Data |                   0.06                   |0.06                                            |
 
 </div>
 
 
-Until now, we matched each treated unit to its closest control unit: we could however make sure that a treated unit is not matched to a control unit which is too much different. We do so by setting a caliper, the maximum distance in terms of propensity score standard deviation allowed between a treated and control. We implement below the same propensity score matching but with a caliper of 0.5:
+We also display below the evolution of the difference in proportions for binary covariates:
+
+<div class="layout-chunk" data-layout="l-body-outset">
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class='va'>graph_love_plot_ps_1</span><span class='op'>[[</span><span class='st'>"data"</span><span class='op'>]</span><span class='op'>]</span> <span class='op'>%&gt;%</span>
+  <span class='fu'><a href='https://rdrr.io/r/stats/filter.html'>filter</a></span><span class='op'>(</span><span class='va'>type</span> <span class='op'>==</span> <span class='st'>"Binary"</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
+  <span class='fu'>group_by</span><span class='op'>(</span><span class='va'>Sample</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
+  <span class='fu'>summarise</span><span class='op'>(</span><span class='st'>"Average of Standardized Mean Differences"</span> <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/Round.html'>round</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/mean.html'>mean</a></span><span class='op'>(</span><span class='va'>stat</span><span class='op'>)</span>, <span class='fl'>2</span><span class='op'>)</span>,
+            <span class='st'>"Std. Deviation of Standardized Mean Differences"</span> <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/Round.html'>round</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/stats/sd.html'>sd</a></span><span class='op'>(</span><span class='va'>stat</span><span class='op'>)</span>, <span class='fl'>2</span><span class='op'>)</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
+  <span class='fu'><a href='https://rdrr.io/pkg/knitr/man/kable.html'>kable</a></span><span class='op'>(</span>align <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>"l"</span>, <span class='st'>"c"</span><span class='op'>)</span><span class='op'>)</span>
+</code></pre></div>
+
+
+|Sample       | Average of Standardized Mean Differences |Std. Deviation of Standardized Mean Differences |
+|:------------|:----------------------------------------:|:-----------------------------------------------|
+|Initial Data |                   0.05                   |0.07                                            |
+|Matched Data |                   0.01                   |0.01                                            |
+
+</div>
+
+
+Overall, for both types of covariates, the balance has clearly improved after matching.
+
+Until now, we matched each treated unit to its closest control unit according to 1 standard deviation caliper: we could however make sure that a treated unit is not matched to a control unit which is too much different. We do so by setting a caliper of 0.5 standard deviation:
 
 <div class="layout-chunk" data-layout="l-body-outset">
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class='co'># match without caliper</span>
-<span class='va'>matching_ps_w_calliper</span> <span class='op'>&lt;-</span>
+<span class='va'>matching_ps_0.5_caliper</span> <span class='op'>&lt;-</span>
   <span class='fu'><a href='https://kosukeimai.github.io/MatchIt/reference/matchit.html'>matchit</a></span><span class='op'>(</span>
     <span class='va'>heat_wave</span> <span class='op'>~</span> <span class='va'>heat_wave_lag_1</span> <span class='op'>+</span> <span class='va'>heat_wave_lag_2</span> <span class='op'>+</span> <span class='va'>heat_wave_lag_3</span> <span class='op'>+</span>
       <span class='va'>o3_lag_1</span> <span class='op'>+</span> <span class='va'>o3_lag_2</span> <span class='op'>+</span> <span class='va'>o3_lag_3</span> <span class='op'>+</span>
       <span class='va'>no2</span> <span class='op'>+</span> <span class='va'>no2_lag_1</span> <span class='op'>+</span> <span class='va'>no2_lag_2</span> <span class='op'>+</span> <span class='va'>no2_lag_3</span> <span class='op'>+</span>
       <span class='va'>humidity_relative</span> <span class='op'>+</span> <span class='va'>month</span> <span class='op'>+</span> <span class='va'>week</span> <span class='op'>+</span> <span class='va'>year</span>,
-    caliper <span class='op'>=</span> <span class='fl'>0.1</span>,
+    caliper <span class='op'>=</span> <span class='fl'>0.5</span>,
     data <span class='op'>=</span> <span class='va'>data</span>
   <span class='op'>)</span>
 
 <span class='co'># display summary of the procedure</span>
-<span class='va'>matching_ps_w_calliper</span>
+<span class='va'>matching_ps_0.5_caliper</span>
 </code></pre></div>
 
 ```
@@ -329,8 +354,8 @@ A matchit object
  - method: 1:1 nearest neighbor matching without replacement
  - distance: Propensity score [caliper]
              - estimated with logistic regression
- - caliper: <distance> (0.016)
- - number of obs.: 1376 (original), 192 (matched)
+ - caliper: <distance> (0.078)
+ - number of obs.: 1376 (original), 222 (matched)
  - target estimand: ATT
  - covariates: heat_wave_lag_1, heat_wave_lag_2, heat_wave_lag_3, o3_lag_1, o3_lag_2, o3_lag_3, no2, no2_lag_1, no2_lag_2, no2_lag_3, humidity_relative, month, week, year
 ```
@@ -338,14 +363,14 @@ A matchit object
 </div>
 
 
-Compared to the matching without caliper, there are now 96` matched treated units. We can check whether the propensity score distributions overlap better:
+Compared to the matching with a 1 standard deivation caliper, there are now 111 matched treated units. We can check whether the propensity score distributions overlap better:
 
 <div class="layout-chunk" data-layout="l-body-outset">
 <details>
 <summary>Please show me the code!</summary>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class='co'># distribution of propensity scores</span>
 <span class='va'>graph_propensity_score_distribution_2</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://ngreifer.github.io/cobalt/reference/bal.plot.html'>bal.plot</a></span><span class='op'>(</span>
-  <span class='va'>matching_ps_w_calliper</span>,
+  <span class='va'>matching_ps_0.5_caliper</span>,
   var.name <span class='op'>=</span> <span class='st'>"distance"</span>,
   which <span class='op'>=</span> <span class='st'>"both"</span>,
   sample.names <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>"Initial Data"</span>, <span class='st'>"Matched Data"</span><span class='op'>)</span>,
@@ -355,7 +380,7 @@ Compared to the matching without caliper, there are now 96` matched treated unit
   <span class='fu'>xlab</span><span class='op'>(</span><span class='st'>"Propensity Scores"</span><span class='op'>)</span> <span class='op'>+</span>
   <span class='fu'>scale_fill_manual</span><span class='op'>(</span>
     name <span class='op'>=</span> <span class='st'>"Group:"</span>,
-    values <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='va'>my_orange</span>, <span class='va'>my_blue</span><span class='op'>)</span>,
+    values <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='va'>my_blue</span>, <span class='va'>my_orange</span><span class='op'>)</span>,
     labels <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>"Days without Heat Waves"</span>, <span class='st'>"Days with Heat Waves"</span><span class='op'>)</span>
   <span class='op'>)</span> <span class='op'>+</span>
   <span class='fu'>theme_tufte</span><span class='op'>(</span><span class='op'>)</span>
@@ -364,7 +389,7 @@ Compared to the matching without caliper, there are now 96` matched treated unit
 <span class='va'>graph_propensity_score_distribution_2</span>
 </code></pre></div>
 
-</details>![](4_propensity_score_matching_files/figure-html5/unnamed-chunk-9-1.png)<!-- --><details>
+</details>![](4_propensity_score_matching_files/figure-html5/unnamed-chunk-10-1.png)<!-- --><details>
 <summary>Please show me the code!</summary>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class='co'># save the graph</span>
 <span class='fu'>ggsave</span><span class='op'>(</span>
@@ -394,8 +419,8 @@ It seems to be better than the matching without caliper. We can also evaluate ho
   <span class='va'>heat_wave</span> <span class='op'>~</span> <span class='va'>heat_wave_lag_1</span> <span class='op'>+</span> <span class='va'>heat_wave_lag_2</span> <span class='op'>+</span> <span class='va'>heat_wave_lag_3</span> <span class='op'>+</span> <span class='va'>o3_lag_1</span> <span class='op'>+</span> <span class='va'>o3_lag_2</span> <span class='op'>+</span> <span class='va'>o3_lag_3</span> <span class='op'>+</span> <span class='va'>no2</span> <span class='op'>+</span> <span class='va'>no2_lag_1</span> <span class='op'>+</span> <span class='va'>no2_lag_2</span> <span class='op'>+</span> <span class='va'>no2_lag_3</span> <span class='op'>+</span> <span class='va'>humidity_relative</span> <span class='op'>+</span> <span class='va'>month</span> <span class='op'>+</span> <span class='va'>week</span> <span class='op'>+</span> <span class='va'>year</span>,
   data <span class='op'>=</span> <span class='va'>data</span>,
   estimand <span class='op'>=</span> <span class='st'>"ATT"</span>,
-  weights <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/list.html'>list</a></span><span class='op'>(</span><span class='st'>"Without Caliper"</span> <span class='op'>=</span> <span class='va'>matching_ps_no_calliper</span>,
-                 <span class='st'>"With Caliper"</span> <span class='op'>=</span> <span class='va'>matching_ps_w_calliper</span><span class='op'>)</span>,
+  weights <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/list.html'>list</a></span><span class='op'>(</span><span class='st'>"Without Caliper"</span> <span class='op'>=</span> <span class='va'>matching_ps_1_caliper</span>,
+                 <span class='st'>"With Caliper"</span> <span class='op'>=</span> <span class='va'>matching_ps_0.5_caliper</span><span class='op'>)</span>,
   drop.distance <span class='op'>=</span> <span class='cn'>TRUE</span>,
   abs <span class='op'>=</span> <span class='cn'>TRUE</span>,
   var.order <span class='op'>=</span> <span class='st'>"unadjusted"</span>,
@@ -415,7 +440,7 @@ It seems to be better than the matching without caliper. We can also evaluate ho
 <span class='co'># display the graph</span>
 <span class='va'>graph_love_plot_ps_2</span>
 </code></pre></div>
-![](4_propensity_score_matching_files/figure-html5/unnamed-chunk-10-1.png)<!-- --><div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class='co'># save the graph</span>
+![](4_propensity_score_matching_files/figure-html5/unnamed-chunk-11-1.png)<!-- --><div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class='co'># save the graph</span>
 <span class='fu'>ggsave</span><span class='op'>(</span>
   <span class='va'>graph_love_plot_ps_2</span>,
   filename <span class='op'>=</span> <span class='fu'>here</span><span class='fu'>::</span><span class='fu'><a href='https://here.r-lib.org//reference/here.html'>here</a></span><span class='op'>(</span>
@@ -433,10 +458,11 @@ It seems to be better than the matching without caliper. We can also evaluate ho
 </div>
 
 
-On this graph, it is not clear to see whether covariates balance has really increased. We display below the average of standardized mean differences for the three datasets:
+On this graph, it is not clear to see whether covariates balance has really increased. We display below, for continuous covariates, the average of standardized mean differences for the three datasets:
 
 <div class="layout-chunk" data-layout="l-body-outset">
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class='va'>graph_love_plot_ps_2</span><span class='op'>[[</span><span class='st'>"data"</span><span class='op'>]</span><span class='op'>]</span> <span class='op'>%&gt;%</span>
+  <span class='fu'><a href='https://rdrr.io/r/stats/filter.html'>filter</a></span><span class='op'>(</span><span class='va'>type</span> <span class='op'>==</span> <span class='st'>"Contin."</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
   <span class='fu'>group_by</span><span class='op'>(</span><span class='va'>Sample</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
   <span class='fu'>summarise</span><span class='op'>(</span><span class='st'>"Average of Standardized Mean Differences"</span> <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/Round.html'>round</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/mean.html'>mean</a></span><span class='op'>(</span><span class='va'>stat</span><span class='op'>)</span>, <span class='fl'>2</span><span class='op'>)</span>,
             <span class='st'>"Std. Deviation of Standardized Mean Differences"</span> <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/Round.html'>round</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/stats/sd.html'>sd</a></span><span class='op'>(</span><span class='va'>stat</span><span class='op'>)</span>, <span class='fl'>2</span><span class='op'>)</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
@@ -446,15 +472,35 @@ On this graph, it is not clear to see whether covariates balance has really incr
 
 |Sample          | Average of Standardized Mean Differences |Std. Deviation of Standardized Mean Differences |
 |:---------------|:----------------------------------------:|:-----------------------------------------------|
-|Initial Data    |                   0.13                   |0.21                                            |
-|Without Caliper |                   0.02                   |0.03                                            |
-|With Caliper    |                   0.03                   |0.03                                            |
+|Initial Data    |                   0.49                   |0.29                                            |
+|Without Caliper |                   0.06                   |0.06                                            |
+|With Caliper    |                   0.07                   |0.04                                            |
 
 </div>
 
 
-We can see that the average of standardized mean differences is 0.01 higher when using a caliper than without one.
+We can see that the average of standardized mean differences is 0.01 higher when using a 0.5 SD caliper than with a 1 SD caliper. We also display below the evolution of the difference in proportions for binary covariates:
 
+<div class="layout-chunk" data-layout="l-body-outset">
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class='va'>graph_love_plot_ps_2</span><span class='op'>[[</span><span class='st'>"data"</span><span class='op'>]</span><span class='op'>]</span> <span class='op'>%&gt;%</span>
+  <span class='fu'><a href='https://rdrr.io/r/stats/filter.html'>filter</a></span><span class='op'>(</span><span class='va'>type</span> <span class='op'>==</span> <span class='st'>"Binary"</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
+  <span class='fu'>group_by</span><span class='op'>(</span><span class='va'>Sample</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
+  <span class='fu'>summarise</span><span class='op'>(</span><span class='st'>"Average of Standardized Mean Differences"</span> <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/Round.html'>round</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/mean.html'>mean</a></span><span class='op'>(</span><span class='va'>stat</span><span class='op'>)</span>, <span class='fl'>2</span><span class='op'>)</span>,
+            <span class='st'>"Std. Deviation of Standardized Mean Differences"</span> <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/Round.html'>round</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/stats/sd.html'>sd</a></span><span class='op'>(</span><span class='va'>stat</span><span class='op'>)</span>, <span class='fl'>2</span><span class='op'>)</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
+  <span class='fu'><a href='https://rdrr.io/pkg/knitr/man/kable.html'>kable</a></span><span class='op'>(</span>align <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>"l"</span>, <span class='st'>"c"</span><span class='op'>)</span><span class='op'>)</span>
+</code></pre></div>
+
+
+|Sample          | Average of Standardized Mean Differences |Std. Deviation of Standardized Mean Differences |
+|:---------------|:----------------------------------------:|:-----------------------------------------------|
+|Initial Data    |                   0.05                   |0.07                                            |
+|Without Caliper |                   0.01                   |0.01                                            |
+|With Caliper    |                   0.02                   |0.01                                            |
+
+</div>
+
+
+Again, the stricter matching procedure did not help improve the balance of binary covariates.
 
 We finally save the data on covariates balance in the `3.outputs/1.data/covariates_balance` folder.
 
@@ -476,20 +522,31 @@ We finally save the data on covariates balance in the `3.outputs/1.data/covariat
 
 ### Analysis of Matched Data
 
-We now move to the analysis of the matched datasets using a simple regression model where we first regression the YoLL on the treatment indicator. We start with the matched data resulting from the propensity score without caliper:
+We now move to the analysis of the matched datasets using a simple regression model where we first regression the YoLL on the treatment indicator. We start with the matched data resulting from the propensity score with a 1 SD caliper. It is very important to note that the target causal estimand is not anymore the the average treatment on the treated as not all treated units could be matched to similar control units (2 treated units could not be matched). To know the true causal effect for the match data, we compute the mean difference in potential outcomes:
 
 <div class="layout-chunk" data-layout="l-body-outset">
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class='co'># we retrieve the matched data</span>
-<span class='va'>data_ps_no_calliper</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://kosukeimai.github.io/MatchIt/reference/match.data.html'>match.data</a></span><span class='op'>(</span><span class='va'>matching_ps_no_calliper</span><span class='op'>)</span>
+<span class='va'>data_ps_1_caliper</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://kosukeimai.github.io/MatchIt/reference/match.data.html'>match.data</a></span><span class='op'>(</span><span class='va'>matching_ps_1_caliper</span><span class='op'>)</span>
 
-<span class='co'># we fit the regression model</span>
-<span class='va'>model_ps_no_calliper</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/stats/lm.html'>lm</a></span><span class='op'>(</span><span class='va'>y_obs</span> <span class='op'>~</span> <span class='va'>heat_wave</span>,
-                           data <span class='op'>=</span> <span class='va'>data_ps_no_calliper</span>,
+<span class='co'># compute the true effect for the data</span>
+<span class='va'>true_att_ps_1_caliper</span> <span class='op'>&lt;-</span>
+  <span class='fu'><a href='https://rdrr.io/r/base/Round.html'>round</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/mean.html'>mean</a></span><span class='op'>(</span><span class='va'>data_ps_1_caliper</span><span class='op'>$</span><span class='va'>y_1</span><span class='op'>[</span><span class='va'>data_ps_1_caliper</span><span class='op'>$</span><span class='va'>heat_wave</span> <span class='op'>==</span> <span class='fl'>1</span><span class='op'>]</span> <span class='op'>-</span> <span class='va'>data_ps_1_caliper</span><span class='op'>$</span><span class='va'>y_0</span><span class='op'>[</span><span class='va'>data_ps_1_caliper</span><span class='op'>$</span><span class='va'>heat_wave</span> <span class='op'>==</span> <span class='fl'>0</span><span class='op'>]</span><span class='op'>)</span>, <span class='fl'>0</span><span class='op'>)</span>
+</code></pre></div>
+
+</div>
+
+
+The true effect for this match data is equal to +275 YoLL, which is different for the true effect of 230 YoLL on **all** treated units. If we estimate this effect with a simple linear regression model, we get:
+
+<div class="layout-chunk" data-layout="l-body-outset">
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class='co'># we fit the regression model</span>
+<span class='va'>model_ps_1_caliper</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/stats/lm.html'>lm</a></span><span class='op'>(</span><span class='va'>y_obs</span> <span class='op'>~</span> <span class='va'>heat_wave</span>,
+                           data <span class='op'>=</span> <span class='va'>data_ps_1_caliper</span>,
                            weights <span class='op'>=</span> <span class='va'>weights</span><span class='op'>)</span>
 
 <span class='co'># retrieve the estimate and 95% ci</span>
-<span class='va'>results_ps_no_calliper</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://generics.r-lib.org/reference/tidy.html'>tidy</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/pkg/lmtest/man/coeftest.html'>coeftest</a></span><span class='op'>(</span>
-  <span class='va'>model_ps_no_calliper</span>,
+<span class='va'>results_ps_1_caliper</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://generics.r-lib.org/reference/tidy.html'>tidy</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/pkg/lmtest/man/coeftest.html'>coeftest</a></span><span class='op'>(</span>
+  <span class='va'>model_ps_1_caliper</span>,
   vcov. <span class='op'>=</span> <span class='va'>vcovCL</span>,
   cluster <span class='op'>=</span> <span class='op'>~</span> <span class='va'>subclass</span>
 <span class='op'>)</span>,
@@ -499,7 +556,7 @@ conf.int <span class='op'>=</span> <span class='cn'>TRUE</span><span class='op'>
   <span class='fu'>mutate_at</span><span class='op'>(</span><span class='fu'>vars</span><span class='op'>(</span><span class='va'>estimate</span><span class='op'>:</span><span class='va'>conf.high</span><span class='op'>)</span>, <span class='op'>~</span> <span class='fu'><a href='https://rdrr.io/r/base/Round.html'>round</a></span><span class='op'>(</span><span class='va'>.</span>, <span class='fl'>0</span><span class='op'>)</span><span class='op'>)</span>
 
 <span class='co'># display results</span>
-<span class='va'>results_ps_no_calliper</span> <span class='op'>%&gt;%</span>
+<span class='va'>results_ps_1_caliper</span> <span class='op'>%&gt;%</span>
   <span class='fu'>rename</span><span class='op'>(</span>
     <span class='st'>"Term"</span> <span class='op'>=</span> <span class='va'>term</span>,
     <span class='st'>"Estimate"</span> <span class='op'>=</span> <span class='va'>estimate</span>,
@@ -512,25 +569,25 @@ conf.int <span class='op'>=</span> <span class='cn'>TRUE</span><span class='op'>
 
 |Term      | Estimate | 95% CI Lower Bound | 95% CI Upper Bound |
 |:---------|:--------:|:------------------:|:------------------:|
-|heat_wave |   284    |        230         |        338         |
+|heat_wave |   275    |        220         |        331         |
 
 </div>
 
 
-We find that the average effect on the treated is equal to +284 years of life lost. The 95% confidence interval is consistent with effects ranging from +230 up to +338. The estimate of the ATT is still far from the the true effect of +230 YoLL. If we want to increase the precision of our estimate and remove any remaining imbalance in covariates, we can also run a multivariate regression. We adjust below for the same variables used in the estimation of propensity scores:
+We find that the average effect on the treated is equal to +275 years of life lost, which is the true causal effect. The 95% confidence interval is consistent with effects ranging from +220 up to +331. If we want to increase the precision of our estimate and remove any remaining imbalance in covariates, we can also run a multivariate regression. We adjust below for the same variables used in the estimation of propensity scores:
 
 <div class="layout-chunk" data-layout="l-body-outset">
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class='co'># we fit the regression model</span>
-<span class='va'>model_ps_no_calliper_w_cov</span> <span class='op'>&lt;-</span>
+<span class='va'>model_ps_1_caliper_w_cov</span> <span class='op'>&lt;-</span>
   <span class='fu'><a href='https://rdrr.io/r/stats/lm.html'>lm</a></span><span class='op'>(</span>
     <span class='va'>y_obs</span> <span class='op'>~</span> <span class='va'>heat_wave</span> <span class='op'>+</span> <span class='va'>heat_wave_lag_1</span> <span class='op'>+</span> <span class='va'>heat_wave_lag_2</span> <span class='op'>+</span> <span class='va'>heat_wave_lag_3</span> <span class='op'>+</span> <span class='va'>o3_lag_1</span> <span class='op'>+</span> <span class='va'>o3_lag_2</span> <span class='op'>+</span> <span class='va'>o3_lag_3</span> <span class='op'>+</span> <span class='va'>no2</span> <span class='op'>+</span> <span class='va'>no2_lag_1</span> <span class='op'>+</span> <span class='va'>no2_lag_2</span> <span class='op'>+</span> <span class='va'>no2_lag_3</span> <span class='op'>+</span> <span class='va'>humidity_relative</span> <span class='op'>+</span> <span class='va'>month</span> <span class='op'>+</span> <span class='va'>week</span> <span class='op'>+</span> <span class='va'>year</span>,
-    data <span class='op'>=</span> <span class='va'>data_ps_no_calliper</span>,
+    data <span class='op'>=</span> <span class='va'>data_ps_1_caliper</span>,
     weights <span class='op'>=</span> <span class='va'>weights</span>
   <span class='op'>)</span>
 
 <span class='co'># retrieve the estimate and 95% ci</span>
-<span class='va'>results_ps_no_calliper_w_cov</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://generics.r-lib.org/reference/tidy.html'>tidy</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/pkg/lmtest/man/coeftest.html'>coeftest</a></span><span class='op'>(</span>
-  <span class='va'>model_ps_no_calliper_w_cov</span>,
+<span class='va'>results_ps_1_caliper_w_cov</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://generics.r-lib.org/reference/tidy.html'>tidy</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/pkg/lmtest/man/coeftest.html'>coeftest</a></span><span class='op'>(</span>
+  <span class='va'>model_ps_1_caliper_w_cov</span>,
   vcov. <span class='op'>=</span> <span class='va'>vcovCL</span>,
   cluster <span class='op'>=</span> <span class='op'>~</span> <span class='va'>subclass</span>
 <span class='op'>)</span>,
@@ -540,7 +597,7 @@ conf.int <span class='op'>=</span> <span class='cn'>TRUE</span><span class='op'>
   <span class='fu'>mutate_at</span><span class='op'>(</span><span class='fu'>vars</span><span class='op'>(</span><span class='va'>estimate</span><span class='op'>:</span><span class='va'>conf.high</span><span class='op'>)</span>, <span class='op'>~</span> <span class='fu'><a href='https://rdrr.io/r/base/Round.html'>round</a></span><span class='op'>(</span><span class='va'>.</span>, <span class='fl'>0</span><span class='op'>)</span><span class='op'>)</span>
 
 <span class='co'># display results</span>
-<span class='va'>results_ps_no_calliper_w_cov</span> <span class='op'>%&gt;%</span>
+<span class='va'>results_ps_1_caliper_w_cov</span> <span class='op'>%&gt;%</span>
   <span class='fu'>rename</span><span class='op'>(</span>
     <span class='st'>"Term"</span> <span class='op'>=</span> <span class='va'>term</span>,
     <span class='st'>"Estimate"</span> <span class='op'>=</span> <span class='va'>estimate</span>,
@@ -553,39 +610,39 @@ conf.int <span class='op'>=</span> <span class='cn'>TRUE</span><span class='op'>
 
 |Term      | Estimate | 95% CI Lower Bound | 95% CI Upper Bound |
 |:---------|:--------:|:------------------:|:------------------:|
-|heat_wave |   252    |        225         |        279         |
+|heat_wave |   250    |        223         |        277         |
 
 </div>
 
 
 
-We find that the average effect on the treated is equal to +252 years of life lost: the estimate is closer to the true effect. The 95% confidence interval is consistent with effects ranging from +225 up to +279. The width of confidence interval is now equal to 54, which is half smaller than the previous interval of 108.
+We find that the average effect on the treated is equal to +250 years of life lost: the estimate is now further away from the true effect. The 95% confidence interval is consistent with effects ranging from +223 up to +277. The width of confidence interval is now equal to 54, which is about half smaller than the previous interval of 111.
 
-We also estimate the treatment effect for the matched dataset resulting from the matching procedure with a caliper. It is very important to note that the target causal estimand is not anymore the the average treatment on the treated as not all treated units could be matched to similar control units. To know the true causal effect for the match data, we compute the mean difference in potential outcomes:
+We also estimate the treatment effect for the matched dataset resulting from the matching procedure with a 0.5 caliper. Again, it is very important to note that the target causal estimand is not anymore the the average treatment on the treated as not all treated units could be matched to similar control units: 111 treated units were matched. To know the true causal effect for the match data, we compute the mean difference in potential outcomes:
 
 <div class="layout-chunk" data-layout="l-body-outset">
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class='co'># we retrieve the matched data</span>
-<span class='va'>data_ps_w_calliper</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://kosukeimai.github.io/MatchIt/reference/match.data.html'>match.data</a></span><span class='op'>(</span><span class='va'>matching_ps_w_calliper</span><span class='op'>)</span>
+<span class='va'>data_ps_0.5_caliper</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://kosukeimai.github.io/MatchIt/reference/match.data.html'>match.data</a></span><span class='op'>(</span><span class='va'>matching_ps_0.5_caliper</span><span class='op'>)</span>
 
 <span class='co'># compute the true effect for the data</span>
-<span class='va'>true_att_ps__w_calliper</span> <span class='op'>&lt;-</span>
-  <span class='fu'><a href='https://rdrr.io/r/base/Round.html'>round</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/mean.html'>mean</a></span><span class='op'>(</span><span class='va'>data_ps_w_calliper</span><span class='op'>$</span><span class='va'>y_1</span><span class='op'>[</span><span class='va'>data_ps_w_calliper</span><span class='op'>$</span><span class='va'>heat_wave</span> <span class='op'>==</span> <span class='fl'>1</span><span class='op'>]</span> <span class='op'>-</span> <span class='va'>data_ps_w_calliper</span><span class='op'>$</span><span class='va'>y_0</span><span class='op'>[</span><span class='va'>data_ps_w_calliper</span><span class='op'>$</span><span class='va'>heat_wave</span> <span class='op'>==</span> <span class='fl'>0</span><span class='op'>]</span><span class='op'>)</span>, <span class='fl'>0</span><span class='op'>)</span>
+<span class='va'>true_att_ps_0.5_caliper</span> <span class='op'>&lt;-</span>
+  <span class='fu'><a href='https://rdrr.io/r/base/Round.html'>round</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/mean.html'>mean</a></span><span class='op'>(</span><span class='va'>data_ps_0.5_caliper</span><span class='op'>$</span><span class='va'>y_1</span><span class='op'>[</span><span class='va'>data_ps_0.5_caliper</span><span class='op'>$</span><span class='va'>heat_wave</span> <span class='op'>==</span> <span class='fl'>1</span><span class='op'>]</span> <span class='op'>-</span> <span class='va'>data_ps_0.5_caliper</span><span class='op'>$</span><span class='va'>y_0</span><span class='op'>[</span><span class='va'>data_ps_0.5_caliper</span><span class='op'>$</span><span class='va'>heat_wave</span> <span class='op'>==</span> <span class='fl'>0</span><span class='op'>]</span><span class='op'>)</span>, <span class='fl'>0</span><span class='op'>)</span>
 </code></pre></div>
 
 </div>
 
 
-The true effect for this match data is equal to +245 YoLL, which is different for the true effect on **all** treated units. If we estimate this effect with a simple linear regression model, we get:
+The true effect for this match data is equal to +255 YoLL, which is different for the true effect on **all** treated units and of the matched dataset for a 1 SD caliper. If we estimate this effect with a simple linear regression model, we get:
 
 <div class="layout-chunk" data-layout="l-body-outset">
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class='co'># we fit the regression model</span>
-<span class='va'>model_ps_w_calliper</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/stats/lm.html'>lm</a></span><span class='op'>(</span><span class='va'>y_obs</span> <span class='op'>~</span> <span class='va'>heat_wave</span>,
-                          data <span class='op'>=</span> <span class='va'>data_ps_w_calliper</span>,
+<span class='va'>model_ps_0.5_caliper</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/stats/lm.html'>lm</a></span><span class='op'>(</span><span class='va'>y_obs</span> <span class='op'>~</span> <span class='va'>heat_wave</span>,
+                          data <span class='op'>=</span> <span class='va'>data_ps_0.5_caliper</span>,
                           weights <span class='op'>=</span> <span class='va'>weights</span><span class='op'>)</span>
 
 <span class='co'># retrieve the estimate and 95% ci</span>
-<span class='va'>results_ps_w_calliper</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://generics.r-lib.org/reference/tidy.html'>tidy</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/pkg/lmtest/man/coeftest.html'>coeftest</a></span><span class='op'>(</span>
-  <span class='va'>model_ps_w_calliper</span>,
+<span class='va'>results_ps_0.5_caliper</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://generics.r-lib.org/reference/tidy.html'>tidy</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/pkg/lmtest/man/coeftest.html'>coeftest</a></span><span class='op'>(</span>
+  <span class='va'>model_ps_0.5_caliper</span>,
   vcov. <span class='op'>=</span> <span class='va'>vcovCL</span>,
   cluster <span class='op'>=</span> <span class='op'>~</span> <span class='va'>subclass</span>
 <span class='op'>)</span>,
@@ -595,7 +652,7 @@ conf.int <span class='op'>=</span> <span class='cn'>TRUE</span><span class='op'>
   <span class='fu'>mutate_at</span><span class='op'>(</span><span class='fu'>vars</span><span class='op'>(</span><span class='va'>estimate</span><span class='op'>:</span><span class='va'>conf.high</span><span class='op'>)</span>, <span class='op'>~</span> <span class='fu'><a href='https://rdrr.io/r/base/Round.html'>round</a></span><span class='op'>(</span><span class='va'>.</span>, <span class='fl'>0</span><span class='op'>)</span><span class='op'>)</span>
 
 <span class='co'># display results</span>
-<span class='va'>results_ps_w_calliper</span> <span class='op'>%&gt;%</span>
+<span class='va'>results_ps_0.5_caliper</span> <span class='op'>%&gt;%</span>
   <span class='fu'>rename</span><span class='op'>(</span>
     <span class='st'>"Term"</span> <span class='op'>=</span> <span class='va'>term</span>,
     <span class='st'>"Estimate"</span> <span class='op'>=</span> <span class='va'>estimate</span>,
@@ -608,25 +665,25 @@ conf.int <span class='op'>=</span> <span class='cn'>TRUE</span><span class='op'>
 
 |Term      | Estimate | 95% CI Lower Bound | 95% CI Upper Bound |
 |:---------|:--------:|:------------------:|:------------------:|
-|heat_wave |   245    |        186         |        303         |
+|heat_wave |   255    |        195         |        315         |
 
 </div>
 
 
-The estimated is exactly equal to the true effect of +245. The 95% confidence interval is consistent with effects ranging from +186 up to +303. We finally run the regression model where we adjust for covariates:
+The estimated is exactly equal to the true effect of +255. The 95% confidence interval is consistent with effects ranging from +195 up to +315. We finally run the regression model where we adjust for covariates:
 
 <div class="layout-chunk" data-layout="l-body-outset">
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class='co'># we fit the regression model</span>
-<span class='va'>model_ps_w_calliper_w_cov</span> <span class='op'>&lt;-</span>
+<span class='va'>model_ps_0.5_caliper_w_cov</span> <span class='op'>&lt;-</span>
   <span class='fu'><a href='https://rdrr.io/r/stats/lm.html'>lm</a></span><span class='op'>(</span>
     <span class='va'>y_obs</span> <span class='op'>~</span> <span class='va'>heat_wave</span> <span class='op'>+</span> <span class='va'>heat_wave_lag_1</span> <span class='op'>+</span> <span class='va'>heat_wave_lag_2</span> <span class='op'>+</span> <span class='va'>heat_wave_lag_3</span> <span class='op'>+</span> <span class='va'>o3_lag_1</span> <span class='op'>+</span> <span class='va'>o3_lag_2</span> <span class='op'>+</span> <span class='va'>o3_lag_3</span> <span class='op'>+</span> <span class='va'>no2</span> <span class='op'>+</span> <span class='va'>no2_lag_1</span> <span class='op'>+</span> <span class='va'>no2_lag_2</span> <span class='op'>+</span> <span class='va'>no2_lag_3</span> <span class='op'>+</span> <span class='va'>humidity_relative</span> <span class='op'>+</span> <span class='va'>month</span> <span class='op'>+</span> <span class='va'>week</span> <span class='op'>+</span> <span class='va'>year</span>,
-    data <span class='op'>=</span> <span class='va'>data_ps_w_calliper</span>,
+    data <span class='op'>=</span> <span class='va'>data_ps_0.5_caliper</span>,
     weights <span class='op'>=</span> <span class='va'>weights</span>
   <span class='op'>)</span>
 
 <span class='co'># retrieve the estimate and 95% ci</span>
-<span class='va'>results_ps_w_calliper_w_cov</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://generics.r-lib.org/reference/tidy.html'>tidy</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/pkg/lmtest/man/coeftest.html'>coeftest</a></span><span class='op'>(</span>
-  <span class='va'>model_ps_w_calliper_w_cov</span>,
+<span class='va'>results_ps_0.5_caliper_w_cov</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://generics.r-lib.org/reference/tidy.html'>tidy</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/pkg/lmtest/man/coeftest.html'>coeftest</a></span><span class='op'>(</span>
+  <span class='va'>model_ps_0.5_caliper_w_cov</span>,
   vcov. <span class='op'>=</span> <span class='va'>vcovCL</span>,
   cluster <span class='op'>=</span> <span class='op'>~</span> <span class='va'>subclass</span>
 <span class='op'>)</span>,
@@ -636,7 +693,7 @@ conf.int <span class='op'>=</span> <span class='cn'>TRUE</span><span class='op'>
   <span class='fu'>mutate_at</span><span class='op'>(</span><span class='fu'>vars</span><span class='op'>(</span><span class='va'>estimate</span><span class='op'>:</span><span class='va'>conf.high</span><span class='op'>)</span>, <span class='op'>~</span> <span class='fu'><a href='https://rdrr.io/r/base/Round.html'>round</a></span><span class='op'>(</span><span class='va'>.</span>, <span class='fl'>0</span><span class='op'>)</span><span class='op'>)</span>
 
 <span class='co'># display results</span>
-<span class='va'>results_ps_w_calliper_w_cov</span> <span class='op'>%&gt;%</span>
+<span class='va'>results_ps_0.5_caliper_w_cov</span> <span class='op'>%&gt;%</span>
   <span class='fu'>rename</span><span class='op'>(</span>
     <span class='st'>"Term"</span> <span class='op'>=</span> <span class='va'>term</span>,
     <span class='st'>"Estimate"</span> <span class='op'>=</span> <span class='va'>estimate</span>,
@@ -649,32 +706,32 @@ conf.int <span class='op'>=</span> <span class='cn'>TRUE</span><span class='op'>
 
 |Term      | Estimate | 95% CI Lower Bound | 95% CI Upper Bound |
 |:---------|:--------:|:------------------:|:------------------:|
-|heat_wave |   249    |        220         |        278         |
+|heat_wave |   250    |        223         |        277         |
 
 </div>
 
 
-We find that the average effect on the treated is equal to +249 years of life lost: the estimate is still very close to the true effect. The 95% confidence interval is consistent with effects ranging from +220 up to +278. The width of confidence interval is now equal to 58, which is half smaller than the previous interval of 117.
+We find that the average effect on the treated is equal to +250 years of life lost: the estimate is still very close to the true effect. The 95% confidence interval is consistent with effects ranging from +223 up to +277. The width of confidence interval is now equal to 54, which is absout half smaller than the previous interval of 120.
 
 
 We finally save the data on results from propensity score analyses in the `3.outputs/1.data/analysis_results` folder.
 
 <div class="layout-chunk" data-layout="l-body-outset">
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class='fu'>bind_rows</span><span class='op'>(</span>
-  <span class='va'>results_ps_no_calliper</span>,
-  <span class='va'>results_ps_no_calliper_w_cov</span>,
-  <span class='va'>results_ps_w_calliper</span>,
-  <span class='va'>results_ps_w_calliper_w_cov</span>
+  <span class='va'>results_ps_1_caliper</span>,
+  <span class='va'>results_ps_1_caliper_w_cov</span>,
+  <span class='va'>results_ps_0.5_caliper</span>,
+  <span class='va'>results_ps_0.5_caliper_w_cov</span>
 <span class='op'>)</span> <span class='op'>%&gt;%</span>
   <span class='fu'>mutate</span><span class='op'>(</span>
     procedure <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span>
-      <span class='st'>"Propensity Score without Calliper"</span>,
-      <span class='st'>"Propensity Score without Calliper and with Covariates Adjustment"</span>,
-      <span class='st'>"Propensity Score with a 0.5 Calliper"</span>,
-      <span class='st'>"Propensity Score with a 0.5 Calipper and with Covariates Adjustment"</span>
+      <span class='st'>"Propensity Score with a 1 SD Caliper"</span>,
+      <span class='st'>"Propensity Score with a 1 SD Caliper and with Covariates Adjustment"</span>,
+      <span class='st'>"Propensity Score with a 0.5 SD Caliper"</span>,
+      <span class='st'>"Propensity Score with a 0.5 SD Caliper and with Covariates Adjustment"</span>
     <span class='op'>)</span>,
-    true_effect <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/rep.html'>rep</a></span><span class='op'>(</span><span class='fl'>230</span>, <span class='fl'>2</span><span class='op'>)</span>, <span class='fu'><a href='https://rdrr.io/r/base/rep.html'>rep</a></span><span class='op'>(</span><span class='va'>true_att_ps__w_calliper</span>, <span class='fl'>2</span><span class='op'>)</span><span class='op'>)</span>,
-    sample_size <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/rep.html'>rep</a></span><span class='op'>(</span><span class='va'>matching_ps_no_calliper</span><span class='op'>[[</span><span class='st'>"nn"</span><span class='op'>]</span><span class='op'>]</span><span class='op'>[</span><span class='fl'>3</span><span class='op'>]</span><span class='op'>*</span><span class='fl'>2</span>, <span class='fl'>2</span><span class='op'>)</span>, <span class='fu'><a href='https://rdrr.io/r/base/rep.html'>rep</a></span><span class='op'>(</span><span class='va'>matching_ps_w_calliper</span><span class='op'>[[</span><span class='st'>"nn"</span><span class='op'>]</span><span class='op'>]</span><span class='op'>[</span><span class='fl'>3</span><span class='op'>]</span><span class='op'>*</span><span class='fl'>2</span>, <span class='fl'>2</span><span class='op'>)</span><span class='op'>)</span>
+    true_effect <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/rep.html'>rep</a></span><span class='op'>(</span><span class='va'>true_att_ps_1_caliper</span>, <span class='fl'>2</span><span class='op'>)</span>, <span class='fu'><a href='https://rdrr.io/r/base/rep.html'>rep</a></span><span class='op'>(</span><span class='va'>true_att_ps_0.5_caliper</span>, <span class='fl'>2</span><span class='op'>)</span><span class='op'>)</span>,
+    sample_size <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/rep.html'>rep</a></span><span class='op'>(</span><span class='va'>matching_ps_1_caliper</span><span class='op'>[[</span><span class='st'>"nn"</span><span class='op'>]</span><span class='op'>]</span><span class='op'>[</span><span class='fl'>3</span><span class='op'>]</span><span class='op'>*</span><span class='fl'>2</span>, <span class='fl'>2</span><span class='op'>)</span>, <span class='fu'><a href='https://rdrr.io/r/base/rep.html'>rep</a></span><span class='op'>(</span><span class='va'>matching_ps_0.5_caliper</span><span class='op'>[[</span><span class='st'>"nn"</span><span class='op'>]</span><span class='op'>]</span><span class='op'>[</span><span class='fl'>3</span><span class='op'>]</span><span class='op'>*</span><span class='fl'>2</span>, <span class='fl'>2</span><span class='op'>)</span><span class='op'>)</span>
   <span class='op'>)</span> <span class='op'>%&gt;%</span>
   <span class='fu'><a href='https://rdrr.io/r/base/readRDS.html'>saveRDS</a></span><span class='op'>(</span>
     <span class='va'>.</span>,
