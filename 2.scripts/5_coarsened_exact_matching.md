@@ -15,7 +15,7 @@ author:
     url: https://lzabrocki.github.io/
     affiliation: Paris School of Economics
     affiliation_url: https://www.parisschoolofeconomics.eu/fr/zabrocki-leo/
-date: "2021-11-26"
+date: "2022-01-20"
 output: 
     distill::distill_article:
       keep_md: true
@@ -32,7 +32,7 @@ body {
 text-align: justify}
 </style>
 
-In this document, we provide all steps and R codes required to estimate the effect of heat waves of the number of years of life lost (YoLL) using coarsened exact matching. The implementation is done with the fantastic package [MatchIt](https://kosukeimai.github.io/MatchIt/index.html): do not hesitate to explore its very well-made documentation. We also rely on the [cobalt](https://cran.r-project.org/web/packages/cobalt/vignettes/cobalt.html) for checking covariate balance. **Should you have any questions, need help to reproduce the analysis or find coding errors, please do not hesitate to contact us at leo.zabrocki@psemail.eu**
+In this document, we provide all steps and R codes required to estimate the effect of heat waves of the number of years of life lost (YoLL) using coarsened exact matching. The implementation is done with the fantastic package [MatchIt](https://kosukeimai.github.io/MatchIt/index.html): do not hesitate to explore its very well-made documentation. We also rely on the [cobalt](https://cran.r-project.org/web/packages/cobalt/vignettes/cobalt.html) package for checking covariate balance. **Should you have any questions, need help to reproduce the analysis or find coding errors, please do not hesitate to contact us at leo.zabrocki@psemail.eu**.
 
 # Required Packages and Data Loading
 
@@ -100,9 +100,9 @@ As a reminder, there are 122 days where an heat wave occurred and 1254 days with
 We implement below a coarsened exact matching procedure where:
 
 * each day with an heat wave is matched to the most similar day without heat wave according to coarsened covariates. This is a 1:1 nearest neighbor matching without replacement.
-* We match units according the three lags of the heat wave indicator, the first lag of ozone coarsened into terciles, nitrogen dioxide and its first lag coarsened into two bins, the relative humidity coarsened into terciles, the week of the year, and the year splitted into periods ("1990-2000" and "2001-2007"). 
+* We match units according the three lags of the heat wave indicator, the first lag of ozone coarsened into terciles, nitrogen dioxide and its first lag coarsened into two bins, the relative humidity coarsened into terciles, the week of the year, and the year split into periods ("1990-2000" and "2001-2007"). 
 
-We explored many different types of coarsening and the values we chose seemed to be result in the best sample size-covariates balance trade-off. 
+We explored many different types of coarsening and the values we chose seemed to result in the best sample size-covariates balance trade-off. 
       
 Once treated and control units are matched, we assess whether covariates balance has improved. 
 
@@ -154,7 +154,7 @@ A matchit object
 </div>
 
 
-The outputtells us that only 47 treated units were matched. We then evaluate the covariates balance using the `love.plot()` function from the cobalt package and the absolute mean difference as the summary statistic. For binary variables, the absolute difference in proportion is computed. For continuous covariates, denoted with a star, the absolute standardized mean difference is computed (the difference is divided by the standard deviation of the variable for treated units before matching).
+The outputtells us that only 94 units were matched. We then evaluate the covariates balance using the `love.plot()` function from the cobalt package and the absolute mean difference as the summary statistic. For binary variables, the absolute difference in proportion is computed. For continuous covariates, denoted with a star, the absolute standardized mean difference is computed (the difference is divided by the standard deviation of the variable for treated units before matching).
 
 <div class="layout-chunk" data-layout="l-body-outset">
 <details>
@@ -259,6 +259,8 @@ The outputtells us that only 47 treated units were matched. We then evaluate the
 On this graph, we see whether covariates balance has increased for most covariates but for the year indicators. We divided the year variable in only two groups to help increase the sample size. If we increase the number of groups, we do not find similar pairs of treated and control units. The imbalance for NO$_{2}$ in $t$ is also a bit high. We display below the evolution of the average of standardized mean differences for continuous covariates:
 
 <div class="layout-chunk" data-layout="l-body-outset">
+<details>
+<summary>Please show me the code!</summary>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class='va'>graph_love_plot_cm</span><span class='op'>[[</span><span class='st'>"data"</span><span class='op'>]</span><span class='op'>]</span> <span class='op'>%&gt;%</span>
   <span class='fu'><a href='https://rdrr.io/r/stats/filter.html'>filter</a></span><span class='op'>(</span><span class='va'>type</span> <span class='op'>==</span> <span class='st'>"Contin."</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
   <span class='fu'>group_by</span><span class='op'>(</span><span class='va'>Sample</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
@@ -267,6 +269,7 @@ On this graph, we see whether covariates balance has increased for most covariat
   <span class='fu'><a href='https://rdrr.io/pkg/knitr/man/kable.html'>kable</a></span><span class='op'>(</span>align <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>"l"</span>, <span class='st'>"c"</span><span class='op'>)</span><span class='op'>)</span>
 </code></pre></div>
 
+</details>
 
 |Sample       | Average of Standardized Mean Differences |Std. Deviation of Standardized Mean Differences |
 |:------------|:----------------------------------------:|:-----------------------------------------------|
@@ -279,6 +282,8 @@ On this graph, we see whether covariates balance has increased for most covariat
 We also display below the evolution of the difference in proportions for binary covariates:
 
 <div class="layout-chunk" data-layout="l-body-outset">
+<details>
+<summary>Please show me the code!</summary>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class='va'>graph_love_plot_cm</span><span class='op'>[[</span><span class='st'>"data"</span><span class='op'>]</span><span class='op'>]</span> <span class='op'>%&gt;%</span>
   <span class='fu'><a href='https://rdrr.io/r/stats/filter.html'>filter</a></span><span class='op'>(</span><span class='va'>type</span> <span class='op'>==</span> <span class='st'>"Binary"</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
   <span class='fu'>group_by</span><span class='op'>(</span><span class='va'>Sample</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
@@ -287,6 +292,7 @@ We also display below the evolution of the difference in proportions for binary 
   <span class='fu'><a href='https://rdrr.io/pkg/knitr/man/kable.html'>kable</a></span><span class='op'>(</span>align <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>"l"</span>, <span class='st'>"c"</span><span class='op'>)</span><span class='op'>)</span>
 </code></pre></div>
 
+</details>
 
 |Sample       | Average of Standardized Mean Differences |Std. Deviation of Standardized Mean Differences |
 |:------------|:----------------------------------------:|:-----------------------------------------------|
@@ -300,7 +306,7 @@ Overall, for both types of covariates, the balance has clearly improved after ma
 
 ### Analysis of Matched Data
 
-We now move to the analysis of the matched datasets.  It is very important to note that the target causal estimand is not anymore the the average treatment effect on the treated as not all treated units could be matched to similar control units. To know the true causal effect for the match data, we compute the mean difference in potential outcomes:
+We now move to the analysis of the matched datasets.  It is very important to note that the target causal estimand is not anymore the average treatment effect on the treated as not all treated units could be matched to similar control units. To know the true causal effect for the match data, we compute the mean difference in potential outcomes:
 
 <div class="layout-chunk" data-layout="l-body-outset">
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class='co'># we retrieve the matched data</span>
@@ -314,7 +320,7 @@ We now move to the analysis of the matched datasets.  It is very important to no
 </div>
 
 
-The true treatment effect for the matched data is equal to +271 YoLL. To estimate this effect, we first use a simple regression model where we regress the YoLL on the treatment indicator.
+The true treatment effect for the matched data is equal to +270 YoLL. To estimate this effect, we first use a simple regression model where we regress the YoLL on the treatment indicator.
 
 <div class="layout-chunk" data-layout="l-body-outset">
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class='co'># we fit the regression model</span>
@@ -347,12 +353,12 @@ conf.int <span class='op'>=</span> <span class='cn'>TRUE</span><span class='op'>
 
 |Term      | Estimate | 95% CI Lower Bound | 95% CI Upper Bound |
 |:---------|:--------:|:------------------:|:------------------:|
-|heat_wave |   271    |        183         |        358         |
+|heat_wave |   270    |        183         |        357         |
 
 </div>
 
 
-We find that the estimate for the average effect on the treated is equal to +271 years of life lost. This is the true effect size. The 95% confidence interval is consistent with effects ranging from +183 up to +358. If we want to increase the precision of our estimate and remove any remaining imbalance in covariates, we can also run a multivariate regression. We adjust below for the same variables used in the propensity score matching procedure:
+We find that the estimate for the treatment is equal to +270 years of life lost. This is the true effect size. The 95% confidence interval is consistent with effects ranging from +183 up to +357. If we want to increase the precision of our estimate and remove any remaining imbalance in covariates, we can also run a multivariate regression. We adjust below for the same variables used in the propensity score matching procedure:
 
 <div class="layout-chunk" data-layout="l-body-outset">
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class='co'># we fit the regression model</span>
@@ -388,16 +394,18 @@ conf.int <span class='op'>=</span> <span class='cn'>TRUE</span><span class='op'>
 
 |Term      | Estimate | 95% CI Lower Bound | 95% CI Upper Bound |
 |:---------|:--------:|:------------------:|:------------------:|
-|heat_wave |   252    |        180         |        323         |
+|heat_wave |   251    |        180         |        322         |
 
 </div>
 
 
-We find that the average effect on the treated is equal to +252 years of life lost: the estimate is now lower than the true effect. The 95% confidence interval is consistent with effects ranging from +180 up to +323. The width of confidence interval is now equal to 143, which is smaller than the previous interval of 175.
+We find that the average effect on the treated is equal to +251 years of life lost: the estimate is now lower than the true effect. The 95% confidence interval is consistent with effects ranging from +180 up to +322. The width of confidence interval is now equal to 142, which is smaller than the previous interval of 174.
 
 We finally save the data on coarsened results in the `3.outputs/1.data/analysis_results` folder.
 
 <div class="layout-chunk" data-layout="l-body-outset">
+<details>
+<summary>Please show me the code!</summary>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class='fu'>bind_rows</span><span class='op'>(</span>
   <span class='va'>results_cm_w_cov</span>,
   <span class='va'>results_cm_wo_cov</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
@@ -406,7 +414,7 @@ We finally save the data on coarsened results in the `3.outputs/1.data/analysis_
       <span class='st'>"Coarsened Matching without Covariates Adjustment"</span>,
       <span class='st'>"Coarsened Matching with Covariates Adjustment"</span><span class='op'>)</span>,
     true_effect <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/rep.html'>rep</a></span><span class='op'>(</span><span class='va'>true_att</span>, <span class='fl'>2</span><span class='op'>)</span>,
-    sample_size <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/rep.html'>rep</a></span><span class='op'>(</span><span class='va'>matching_coarsened</span><span class='op'>[[</span><span class='st'>"nn"</span><span class='op'>]</span><span class='op'>]</span><span class='op'>[</span><span class='fl'>3</span><span class='op'>]</span><span class='op'>*</span><span class='fl'>2</span>, <span class='fl'>2</span><span class='op'>)</span>
+    sample_size <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/rep.html'>rep</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/sum.html'>sum</a></span><span class='op'>(</span><span class='va'>matching_coarsened</span><span class='op'>[[</span><span class='st'>"weights"</span><span class='op'>]</span><span class='op'>]</span><span class='op'>)</span>, <span class='fl'>2</span><span class='op'>)</span>
   <span class='op'>)</span> <span class='op'>%&gt;%</span>
   <span class='fu'><a href='https://rdrr.io/r/base/readRDS.html'>saveRDS</a></span><span class='op'>(</span>
     <span class='va'>.</span>,
@@ -418,6 +426,8 @@ We finally save the data on coarsened results in the `3.outputs/1.data/analysis_
     <span class='op'>)</span>
   <span class='op'>)</span>
 </code></pre></div>
+
+</details>
 
 </div>
 

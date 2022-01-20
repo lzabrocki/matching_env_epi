@@ -42,7 +42,7 @@ body {
 text-align: justify}
 </style>
 
-In this document, we provide all steps and R codes required to estimate the effect of heat waves of the number of years of life lost (YoLL) using coarsened exact matching. The implementation is done with the fantastic package [MatchIt](https://kosukeimai.github.io/MatchIt/index.html): do not hesitate to explore its very well-made documentation. We also rely on the [cobalt](https://cran.r-project.org/web/packages/cobalt/vignettes/cobalt.html) for checking covariate balance. **Should you have any questions, need help to reproduce the analysis or find coding errors, please do not hesitate to contact us at leo.zabrocki@psemail.eu**
+In this document, we provide all steps and R codes required to estimate the effect of heat waves of the number of years of life lost (YoLL) using coarsened exact matching. The implementation is done with the fantastic package [MatchIt](https://kosukeimai.github.io/MatchIt/index.html): do not hesitate to explore its very well-made documentation. We also rely on the [cobalt](https://cran.r-project.org/web/packages/cobalt/vignettes/cobalt.html) package for checking covariate balance. **Should you have any questions, need help to reproduce the analysis or find coding errors, please do not hesitate to contact us at leo.zabrocki@psemail.eu**.
 
 # Required Packages and Data Loading
 
@@ -101,9 +101,9 @@ As a reminder, there are `r nrow(data %>% filter(heat_wave==1))` days where an h
 We implement below a coarsened exact matching procedure where:
 
 * each day with an heat wave is matched to the most similar day without heat wave according to coarsened covariates. This is a 1:1 nearest neighbor matching without replacement.
-* We match units according the three lags of the heat wave indicator, the first lag of ozone coarsened into terciles, nitrogen dioxide and its first lag coarsened into two bins, the relative humidity coarsened into terciles, the week of the year, and the year splitted into periods ("1990-2000" and "2001-2007"). 
+* We match units according the three lags of the heat wave indicator, the first lag of ozone coarsened into terciles, nitrogen dioxide and its first lag coarsened into two bins, the relative humidity coarsened into terciles, the week of the year, and the year split into periods ("1990-2000" and "2001-2007"). 
 
-We explored many different types of coarsening and the values we chose seemed to be result in the best sample size-covariates balance trade-off. 
+We explored many different types of coarsening and the values we chose seemed to result in the best sample size-covariates balance trade-off. 
       
 Once treated and control units are matched, we assess whether covariates balance has improved. 
 
@@ -144,7 +144,7 @@ matching_coarsened <-
 matching_coarsened
 ```
 
-The outputtells us that only `r matching_coarsened[["nn"]][3]` treated units were matched. We then evaluate the covariates balance using the `love.plot()` function from the cobalt package and the absolute mean difference as the summary statistic. For binary variables, the absolute difference in proportion is computed. For continuous covariates, denoted with a star, the absolute standardized mean difference is computed (the difference is divided by the standard deviation of the variable for treated units before matching).
+The outputtells us that only `r sum(matching_coarsened[["weights"]])` units were matched. We then evaluate the covariates balance using the `love.plot()` function from the cobalt package and the absolute mean difference as the summary statistic. For binary variables, the absolute difference in proportion is computed. For continuous covariates, denoted with a star, the absolute standardized mean difference is computed (the difference is divided by the standard deviation of the variable for treated units before matching).
 
 ```{r, fig.width = 8, fig.height = 8, code_folding="Please show me the code!"}
 # first we nicely label covariates
@@ -238,7 +238,7 @@ ggsave(
 
 On this graph, we see whether covariates balance has increased for most covariates but for the year indicators. We divided the year variable in only two groups to help increase the sample size. If we increase the number of groups, we do not find similar pairs of treated and control units. The imbalance for NO$_{2}$ in $t$ is also a bit high. We display below the evolution of the average of standardized mean differences for continuous covariates:
 
-```{r}
+```{r, code_folding="Please show me the code!"}
 graph_love_plot_cm[["data"]] %>%
   filter(type == "Contin.") %>%
   group_by(Sample) %>%
@@ -249,7 +249,7 @@ graph_love_plot_cm[["data"]] %>%
 
 We also display below the evolution of the difference in proportions for binary covariates:
 
-```{r}
+```{r, code_folding="Please show me the code!"}
 graph_love_plot_cm[["data"]] %>%
   filter(type == "Binary") %>%
   group_by(Sample) %>%
@@ -262,7 +262,7 @@ Overall, for both types of covariates, the balance has clearly improved after ma
 
 ### Analysis of Matched Data
 
-We now move to the analysis of the matched datasets.  It is very important to note that the target causal estimand is not anymore the the average treatment effect on the treated as not all treated units could be matched to similar control units. To know the true causal effect for the match data, we compute the mean difference in potential outcomes:
+We now move to the analysis of the matched datasets.  It is very important to note that the target causal estimand is not anymore the average treatment effect on the treated as not all treated units could be matched to similar control units. To know the true causal effect for the match data, we compute the mean difference in potential outcomes:
 
 ```{r}
 # we retrieve the matched data
@@ -303,7 +303,7 @@ results_cm_wo_cov %>%
   kable(., align = c("l", "c", "c", "c"))
 ```
 
-We find that the estimate for the average effect on the treated is equal to +`r results_cm_wo_cov$estimate` years of life lost. This is the true effect size. The 95% confidence interval is consistent with effects ranging from +`r results_cm_wo_cov$conf.low` up to +`r results_cm_wo_cov$conf.high`. If we want to increase the precision of our estimate and remove any remaining imbalance in covariates, we can also run a multivariate regression. We adjust below for the same variables used in the propensity score matching procedure:
+We find that the estimate for the treatment is equal to +`r results_cm_wo_cov$estimate` years of life lost. This is the true effect size. The 95% confidence interval is consistent with effects ranging from +`r results_cm_wo_cov$conf.low` up to +`r results_cm_wo_cov$conf.high`. If we want to increase the precision of our estimate and remove any remaining imbalance in covariates, we can also run a multivariate regression. We adjust below for the same variables used in the propensity score matching procedure:
 
 ```{r}
 # we fit the regression model
@@ -340,7 +340,7 @@ We find that the average effect on the treated is equal to +`r results_cm_w_cov$
 
 We finally save the data on coarsened results in the `3.outputs/1.data/analysis_results` folder.
 
-```{r}
+```{r, code_folding="Please show me the code!"}
 bind_rows(
   results_cm_w_cov,
   results_cm_wo_cov) %>%
@@ -349,7 +349,7 @@ bind_rows(
       "Coarsened Matching without Covariates Adjustment",
       "Coarsened Matching with Covariates Adjustment"),
     true_effect = rep(true_att, 2),
-    sample_size = rep(matching_coarsened[["nn"]][3]*2, 2)
+    sample_size = rep(sum(matching_coarsened[["weights"]]), 2)
   ) %>%
   saveRDS(
     .,
