@@ -15,7 +15,7 @@ author:
     url: https://lzabrocki.github.io/
     affiliation: Paris School of Economics
     affiliation_url: https://www.parisschoolofeconomics.eu/fr/zabrocki-leo/
-date: "2021-11-26"
+date: "2022-01-20"
 output: 
     distill::distill_article:
       keep_md: true
@@ -33,7 +33,7 @@ text-align: justify}
 </style>
 
 
-In this document, we display the results of the three matching procedures we implemented. **Should you have any questions, need help to reproduce the analysis or find coding errors, please do not hesitate to contact us at leo.zabrocki@psemail.eu**
+In this document, we display the results of the three matching procedures we implemented. **Should you have any questions, need help to reproduce the analysis or find coding errors, please do not hesitate to contact us at leo.zabrocki@psemail.eu**.
 
 # Required Packages and Data Loading
 
@@ -84,15 +84,15 @@ We display below the summary of results:
 
 |Procedure                                                             | Sample Size | True Effect Size | Estimate |   95% CI   |
 |:---------------------------------------------------------------------|:-----------:|:----------------:|:--------:|:----------:|
-|Coarsened Matching without Covariates Adjustment                      |     94      |       271        |   252    | (180; 323) |
-|Coarsened Matching with Covariates Adjustment                         |     94      |       271        |   271    | (183; 358) |
+|Coarsened Matching without Covariates Adjustment                      |     94      |       270        |   251    | (180; 322) |
+|Coarsened Matching with Covariates Adjustment                         |     94      |       270        |   270    | (183; 357) |
 |Constrained Pair Matching                                             |     72      |       234        |   234    | (167; 300) |
-|Propensity Score with a 1 SD Caliper                                  |     240     |       275        |   275    | (220; 331) |
+|Propensity Score with a 1 SD Caliper                                  |     240     |       275        |   275    | (219; 331) |
 |Propensity Score with a 1 SD Caliper and with Covariates Adjustment   |     240     |       275        |   250    | (223; 277) |
 |Propensity Score with a 0.5 SD Caliper                                |     222     |       255        |   255    | (195; 315) |
-|Propensity Score with a 0.5 SD Caliper and with Covariates Adjustment |     222     |       255        |   250    | (223; 277) |
-|Outcome Regression Model without Covariates Adjustment                |    1376     |       230        |   416    | (378; 454) |
-|Outcome Regression Model with Covariates Adjustment                   |    1376     |       230        |   293    | (279; 307) |
+|Propensity Score with a 0.5 SD Caliper and with Covariates Adjustment |     222     |       255        |   249    | (223; 276) |
+|Outcome Regression Model without Covariates Adjustment                |    1376     |        ?         |   416    | (377; 454) |
+|Outcome Regression Model with Covariates Adjustment                   |    1376     |        ?         |   293    | (279; 306) |
 
 </div>
 

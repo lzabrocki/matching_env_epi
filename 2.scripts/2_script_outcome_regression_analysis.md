@@ -228,7 +228,7 @@ We finally save the results from the two outcome regression models in the `3.out
       <span class='st'>"Outcome Regression Model with Covariates Adjustment"</span>
     <span class='op'>)</span>,
     sample_size <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/nrow.html'>nrow</a></span><span class='op'>(</span><span class='va'>data</span><span class='op'>)</span>,
-    true_effect <span class='op'>=</span> <span class='fl'>230</span>,
+    true_effect <span class='op'>=</span> <span class='st'>"?"</span>,
   <span class='op'>)</span> <span class='op'>%&gt;%</span>
   <span class='fu'><a href='https://rdrr.io/r/base/readRDS.html'>saveRDS</a></span><span class='op'>(</span>
     <span class='va'>.</span>,

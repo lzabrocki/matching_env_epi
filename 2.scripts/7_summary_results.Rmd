@@ -43,7 +43,7 @@ text-align: justify}
 </style>
 
 
-In this document, we display the results of the three matching procedures we implemented. **Should you have any questions, need help to reproduce the analysis or find coding errors, please do not hesitate to contact us at leo.zabrocki@psemail.eu**
+In this document, we display the results of the three matching procedures we implemented. **Should you have any questions, need help to reproduce the analysis or find coding errors, please do not hesitate to contact us at leo.zabrocki@psemail.eu**.
 
 # Required Packages and Data Loading
 

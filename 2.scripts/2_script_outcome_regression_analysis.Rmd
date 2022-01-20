@@ -203,7 +203,7 @@ bind_rows(output_crude_regression,
       "Outcome Regression Model with Covariates Adjustment"
     ),
     sample_size = nrow(data),
-    true_effect = 230,
+    true_effect = "?",
   ) %>%
   saveRDS(
     .,
