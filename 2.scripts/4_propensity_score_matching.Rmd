@@ -42,7 +42,7 @@ body {
 text-align: justify}
 </style>
 
-In this document, we provide all steps and R codes required to estimate the effect of heat waves of the number of years of life lost (YoLL) using propensity score matching. The implementation is done with the fantastic package [MatchIt](https://kosukeimai.github.io/MatchIt/index.html): do not hesitate to explore its very well-made documentation. We also rely on the [cobalt](https://cran.r-project.org/web/packages/cobalt/vignettes/cobalt.html) for checking covariate balance. **Should you have any questions, need help to reproduce the analysis or find coding errors, please do not hesitate to contact us at leo.zabrocki@psemail.eu**
+In this document, we provide all steps and R codes required to estimate the effect of heat waves of the number of years of life lost (YoLL) using propensity score matching. The implementation is done with the fantastic package [MatchIt](https://kosukeimai.github.io/MatchIt/index.html): do not hesitate to explore its very well-made documentation. We also rely on the [cobalt](https://cran.r-project.org/web/packages/cobalt/vignettes/cobalt.html) package for checking covariate balance. **Should you have any questions, need help to reproduce the analysis or find coding errors, please do not hesitate to contact us at leo.zabrocki@psemail.eu**
 
 # Required Packages and Data Loading
 
@@ -129,7 +129,7 @@ matching_ps_1_caliper <-
 matching_ps_1_caliper
 ```
 
-The output of the matching procedure indicates us the method (1:1 nearest neighbor matching without replacement) and the distance (propensity score) we used. It also tells us how many treated units were matched: `r matching_ps_1_caliper[["nn"]][3]` (2 treated units were not matched). We assess how covariates balance has improved by comparing the distribution of propensity scores before and after matching: 
+The output of the matching procedure indicates us the method (1:1 nearest neighbor matching without replacement) and the distance (propensity score) we used. It also tells us how many units were matched: `r sum(matching_ps_1_caliper[["weights"]])` (2 treated units were not matched). We assess how covariates balance has improved by comparing the distribution of propensity scores before and after matching: 
 
 ```{r, fig.width = 10, fig.height = 6, code_folding="Please show me the code!"}
 # distribution of propensity scores
@@ -256,9 +256,9 @@ ggsave(
 )
 ```
 
-On this graph, we can see that for most covariates balance has improved after matching---yet, for few covariates, the standardized mean difference has increased. We display below the evolution of the average of standardized mean differences for continuous covariates:
+On this graph, we can see that, for most covariates, balance has improved after matching---yet, for few covariates, the standardized mean difference has increased. We display below the evolution of the average of standardized mean differences for continuous covariates:
 
-```{r}
+```{r, code_folding="Please show me the code!"}
 graph_love_plot_ps_1[["data"]] %>%
   filter(type == "Contin.") %>%
   group_by(Sample) %>%
@@ -269,7 +269,7 @@ graph_love_plot_ps_1[["data"]] %>%
 
 We also display below the evolution of the difference in proportions for binary covariates:
 
-```{r}
+```{r, code_folding="Please show me the code!"}
 graph_love_plot_ps_1[["data"]] %>%
   filter(type == "Binary") %>%
   group_by(Sample) %>%
@@ -298,7 +298,7 @@ matching_ps_0.5_caliper <-
 matching_ps_0.5_caliper
 ```
 
-Compared to the matching with a 1 standard deivation caliper, there are now `r matching_ps_0.5_caliper[["nn"]][3]` matched treated units. We can check whether the propensity score distributions overlap better:
+Compared to the matching with a 1 standard deivation caliper, there are now `r sum(matching_ps_0.5_caliper[["weights"]])` matched units. We can check whether the propensity score distributions overlap better:
 
 ```{r, fig.width = 10, fig.height = 6, code_folding="Please show me the code!"}
 # distribution of propensity scores
@@ -336,16 +336,16 @@ ggsave(
 )
 ```
 
-It seems to be better than the matching without caliper. We can also evaluate how each covariate balance has improved with a love plot:
+The overlap seems to be better than the matching with a 1 standard deviation caliper. We can also evaluate how each covariate balance has improved with a love plot:
 
-```{r, fig.width = 8, fig.height = 8}
+```{r, fig.width = 8, fig.height = 8, code_folding="Please show me the code!"}
 # make the love plot
 graph_love_plot_ps_2 <- love.plot(
   heat_wave ~ heat_wave_lag_1 + heat_wave_lag_2 + heat_wave_lag_3 + o3_lag_1 + o3_lag_2 + o3_lag_3 + no2 + no2_lag_1 + no2_lag_2 + no2_lag_3 + humidity_relative + month + week + year,
   data = data,
   estimand = "ATT",
-  weights = list("Without Caliper" = matching_ps_1_caliper,
-                 "With Caliper" = matching_ps_0.5_caliper),
+  weights = list("With a 1 SD Caliper" = matching_ps_1_caliper,
+                 "With a 0.5 SD Caliper" = matching_ps_0.5_caliper),
   drop.distance = TRUE,
   abs = TRUE,
   var.order = "unadjusted",
@@ -353,7 +353,7 @@ graph_love_plot_ps_2 <- love.plot(
   s.d.denom = "treated",
   thresholds = c(m = .1),
   var.names = cov_labels,
-  sample.names = c("Initial Data", "Without Caliper", "With Caliper"),
+  sample.names = c("Initial Data", "With a 1 SD Caliper", "With a 0.5 SD Caliper"),
   shapes = c("circle", "triangle", "square"),
   colors = c(my_orange, my_blue, "#81b29a"),
   stars = "std"
@@ -382,7 +382,7 @@ ggsave(
 
 On this graph, it is not clear to see whether covariates balance has really increased. We display below, for continuous covariates, the average of standardized mean differences for the three datasets:
 
-```{r}
+```{r, code_folding="Please show me the code!"}
 graph_love_plot_ps_2[["data"]] %>%
   filter(type == "Contin.") %>%
   group_by(Sample) %>%
@@ -393,7 +393,7 @@ graph_love_plot_ps_2[["data"]] %>%
 
 We can see that the average of standardized mean differences is 0.01 higher when using a 0.5 SD caliper than with a 1 SD caliper. We also display below the evolution of the difference in proportions for binary covariates:
 
-```{r}
+```{r, code_folding="Please show me the code!"}
 graph_love_plot_ps_2[["data"]] %>%
   filter(type == "Binary") %>%
   group_by(Sample) %>%
@@ -406,7 +406,7 @@ Again, the stricter matching procedure did not help improve the balance of binar
 
 We finally save the data on covariates balance in the `3.outputs/1.data/covariates_balance` folder.
 
-```{r}
+```{r, code_folding="Please show me the code!"}
 saveRDS(
   graph_love_plot_ps_2[["data"]],
   here::here(
@@ -421,7 +421,7 @@ saveRDS(
 
 ### Analysis of Matched Data
 
-We now move to the analysis of the matched datasets using a simple regression model where we first regression the YoLL on the treatment indicator. We start with the matched data resulting from the propensity score with a 1 SD caliper. It is very important to note that the target causal estimand is not anymore the the average treatment on the treated as not all treated units could be matched to similar control units (2 treated units could not be matched). To know the true causal effect for the match data, we compute the mean difference in potential outcomes:
+We now move to the analysis of the matched datasets using a simple regression model where we first regress the YoLL on the treatment indicator. We start with the matched data resulting from the propensity score with a 1 SD caliper. It is very important to note that the target causal estimand is not anymore the the average treatment on the treated as not all treated units could be matched to similar control units (2 treated units could not be matched). To know the true causal effect for the match data, we compute the mean difference in potential outcomes:
 
 ```{r}
 # we retrieve the matched data
@@ -498,7 +498,7 @@ results_ps_1_caliper_w_cov %>%
 
 We find that the average effect on the treated is equal to +`r results_ps_1_caliper_w_cov$estimate` years of life lost: the estimate is now further away from the true effect. The 95% confidence interval is consistent with effects ranging from +`r results_ps_1_caliper_w_cov$conf.low` up to +`r results_ps_1_caliper_w_cov$conf.high`. The width of confidence interval is now equal to `r results_ps_1_caliper_w_cov$conf.high - results_ps_1_caliper_w_cov$conf.low`, which is about half smaller than the previous interval of `r results_ps_1_caliper$conf.high - results_ps_1_caliper$conf.low`.
 
-We also estimate the treatment effect for the matched dataset resulting from the matching procedure with a 0.5 caliper. Again, it is very important to note that the target causal estimand is not anymore the the average treatment on the treated as not all treated units could be matched to similar control units: `r matching_ps_0.5_caliper[["nn"]][3]` treated units were matched. To know the true causal effect for the match data, we compute the mean difference in potential outcomes:
+We also estimate the treatment effect for the matched dataset resulting from the matching procedure with a 0.5 caliper. Again, it is very important to note that the target causal estimand is not anymore the the average treatment on the treated as not all treated units could be matched to similar control units: only `r sum(matching_ps_0.5_caliper[["weights"]])/2` treated units were matched. To know the true causal effect for the match data, we compute the mean difference in potential outcomes:
 
 ```{r}
 # we retrieve the matched data
@@ -577,7 +577,7 @@ We find that the average effect on the treated is equal to +`r results_ps_0.5_ca
 
 We finally save the data on results from propensity score analyses in the `3.outputs/1.data/analysis_results` folder.
 
-```{r}
+```{r, code_folding="Please show me the code!"}
 bind_rows(
   results_ps_1_caliper,
   results_ps_1_caliper_w_cov,
@@ -591,16 +591,21 @@ bind_rows(
       "Propensity Score with a 0.5 SD Caliper",
       "Propensity Score with a 0.5 SD Caliper and with Covariates Adjustment"
     ),
-    true_effect = c(rep(true_att_ps_1_caliper, 2), rep(true_att_ps_0.5_caliper, 2)),
-    sample_size = c(rep(matching_ps_1_caliper[["nn"]][3]*2, 2), rep(matching_ps_0.5_caliper[["nn"]][3]*2, 2))
+    true_effect = c(
+      rep(true_att_ps_1_caliper, 2),
+      rep(true_att_ps_0.5_caliper, 2)
+    ),
+    sample_size = c(rep(sum(
+      matching_ps_1_caliper[["weights"]]
+    ), 2), rep(sum(
+      matching_ps_0.5_caliper[["weights"]]
+    ), 2))
   ) %>%
-  saveRDS(
-    .,
-    here::here(
-      "3.outputs",
-      "1.data",
-      "analysis_results",
-      "data_analysis_ps.RDS"
-    )
-  )
+  saveRDS(.,
+          here::here(
+            "3.outputs",
+            "1.data",
+            "analysis_results",
+            "data_analysis_ps.RDS"
+          ))
 ```
