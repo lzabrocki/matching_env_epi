@@ -42,7 +42,7 @@ body {
 text-align: justify}
 </style>
 
-In this document, we provide all steps and R codes required to evaluate if days with heat wave are similar to days without heat wave. [add description]. **Should you have any questions, need help to reproduce the analysis or find coding errors, please do not hesitate to contact us at leo.zabrocki@psemail.eu**
+In this document, we provide all steps and R codes required to evaluate if days with heat wave are similar to days without heat wave. **Should you have any questions, need help to reproduce the analysis or find coding errors, please do not hesitate to contact us at leo.zabrocki@psemail.eu**
 
 # Required Packages
 
