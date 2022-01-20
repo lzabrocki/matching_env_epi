@@ -120,7 +120,7 @@ Below are the required steps to define treatment variable (`is_treated`) and sel
 matching_data <- matching_data %>%
   mutate(is_treated = ifelse(heat_wave == 1, TRUE, FALSE))
 
-# subSet treated and control units
+# subset treated and control units
 treated_units = subset(matching_data, is_treated)
 control_units = subset(matching_data,!is_treated)
 N_treated = nrow(treated_units)
@@ -729,7 +729,7 @@ ggsave(
 
 We display below the evolution of the average of standardized mean differences for continuous covariates:
 
-```{r}
+```{r, code_folding="Please show me the code!"}
 data_love %>%
   filter(type == "continuous") %>%
   group_by(dataset) %>%
@@ -740,7 +740,7 @@ data_love %>%
 
 We also display below the evolution of the difference in proportions for binary covariates:
 
-```{r}
+```{r, code_folding="Please show me the code!"}
 data_love %>%
   filter(type == "binary") %>%
   group_by(dataset) %>%
@@ -798,7 +798,7 @@ We find that the average effect on the treated is equal to +`r results$estimate`
 
 We finally save the data on constrained pair matching results in the `3.outputs/1.data/analysis_results` folder.
 
-```{r}
+```{r, code_folding="Please show me the code!"}
 results %>%
   mutate(
     procedure = "Constrained Pair Matching",

@@ -15,7 +15,7 @@ author:
     url: https://lzabrocki.github.io/
     affiliation: Paris School of Economics
     affiliation_url: https://www.parisschoolofeconomics.eu/fr/zabrocki-leo/
-date: "2021-11-26"
+date: "2022-01-20"
 output: 
     distill::distill_article:
       keep_md: true
@@ -122,7 +122,7 @@ Below are the required steps to define treatment variable (`is_treated`) and sel
 <span class='va'>matching_data</span> <span class='op'>&lt;-</span> <span class='va'>matching_data</span> <span class='op'>%&gt;%</span>
   <span class='fu'>mutate</span><span class='op'>(</span>is_treated <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/ifelse.html'>ifelse</a></span><span class='op'>(</span><span class='va'>heat_wave</span> <span class='op'>==</span> <span class='fl'>1</span>, <span class='cn'>TRUE</span>, <span class='cn'>FALSE</span><span class='op'>)</span><span class='op'>)</span>
 
-<span class='co'># subSet treated and control units</span>
+<span class='co'># subset treated and control units</span>
 <span class='va'>treated_units</span> <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/subset.html'>subset</a></span><span class='op'>(</span><span class='va'>matching_data</span>, <span class='va'>is_treated</span><span class='op'>)</span>
 <span class='va'>control_units</span> <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/subset.html'>subset</a></span><span class='op'>(</span><span class='va'>matching_data</span>,<span class='op'>!</span><span class='va'>is_treated</span><span class='op'>)</span>
 <span class='va'>N_treated</span> <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/nrow.html'>nrow</a></span><span class='op'>(</span><span class='va'>treated_units</span><span class='op'>)</span>
@@ -816,6 +816,8 @@ We plot below the love plot for all variables used in the propensity score match
 We display below the evolution of the average of standardized mean differences for continuous covariates:
 
 <div class="layout-chunk" data-layout="l-body-outset">
+<details>
+<summary>Please show me the code!</summary>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class='va'>data_love</span> <span class='op'>%&gt;%</span>
   <span class='fu'><a href='https://rdrr.io/r/stats/filter.html'>filter</a></span><span class='op'>(</span><span class='va'>type</span> <span class='op'>==</span> <span class='st'>"continuous"</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
   <span class='fu'>group_by</span><span class='op'>(</span><span class='va'>dataset</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
@@ -824,6 +826,7 @@ We display below the evolution of the average of standardized mean differences f
   <span class='fu'><a href='https://rdrr.io/pkg/knitr/man/kable.html'>kable</a></span><span class='op'>(</span>align <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>"l"</span>, <span class='st'>"c"</span><span class='op'>)</span><span class='op'>)</span>
 </code></pre></div>
 
+</details>
 
 |dataset      | Average of Mean Differences |Std. Deviation of Mean Differences |
 |:------------|:---------------------------:|:----------------------------------|
@@ -836,6 +839,8 @@ We display below the evolution of the average of standardized mean differences f
 We also display below the evolution of the difference in proportions for binary covariates:
 
 <div class="layout-chunk" data-layout="l-body-outset">
+<details>
+<summary>Please show me the code!</summary>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class='va'>data_love</span> <span class='op'>%&gt;%</span>
   <span class='fu'><a href='https://rdrr.io/r/stats/filter.html'>filter</a></span><span class='op'>(</span><span class='va'>type</span> <span class='op'>==</span> <span class='st'>"binary"</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
   <span class='fu'>group_by</span><span class='op'>(</span><span class='va'>dataset</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
@@ -844,6 +849,7 @@ We also display below the evolution of the difference in proportions for binary 
   <span class='fu'><a href='https://rdrr.io/pkg/knitr/man/kable.html'>kable</a></span><span class='op'>(</span>align <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>"l"</span>, <span class='st'>"c"</span><span class='op'>)</span><span class='op'>)</span>
 </code></pre></div>
 
+</details>
 
 |dataset      | Average of Mean Differences |Std. Deviation of Mean Differences |
 |:------------|:---------------------------:|:----------------------------------|
@@ -914,6 +920,8 @@ We find that the average effect on the treated is equal to +234 years of life lo
 We finally save the data on constrained pair matching results in the `3.outputs/1.data/analysis_results` folder.
 
 <div class="layout-chunk" data-layout="l-body-outset">
+<details>
+<summary>Please show me the code!</summary>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class='va'>results</span> <span class='op'>%&gt;%</span>
   <span class='fu'>mutate</span><span class='op'>(</span>
     procedure <span class='op'>=</span> <span class='st'>"Constrained Pair Matching"</span>,
@@ -930,6 +938,8 @@ We finally save the data on constrained pair matching results in the `3.outputs/
     <span class='op'>)</span>
   <span class='op'>)</span>
 </code></pre></div>
+
+</details>
 
 </div>
 
