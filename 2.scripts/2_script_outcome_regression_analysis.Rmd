@@ -89,7 +89,7 @@ data <-
 
 To explore whether heat waves lead to an increase in YoLL, we could first compare the distribution of the outcome between days with heat waves and days without heat waves:
 
-```{r, fig.width=10, fig.height=5, code_folding="Please show me the code!"}
+```{r, fig.width=8, fig.height=5, code_folding="Please show me the code!"}
 # make graph
 graph_boxplot_yoll <- data %>%
   # recode heat_wave variable
@@ -157,7 +157,7 @@ output_crude_regression %>%
   kable(., align = c("l", "c", "c", "c"))
 ```
 
-The estimate for the effect of heat waves on Yoll is equal to + `r round(output_crude_regression$estimate[2], 0)` and the 95% confidence interval is consistent with effects ranging from `r round(output_crude_regression$conf.low[2], 0)` up to `r round(output_crude_regression$conf.high[2], 0)`. However, the estimate is far from the true effect of +230 Yoll and is likely biased by confounders.
+The estimate for the effect of heat waves on Yoll is equal to + `r round(output_crude_regression[2], 0)` and the 95% confidence interval is consistent with effects ranging from `r round(output_crude_regression$conf.low, 0)` up to `r round(output_crude_regression$conf.high, 0)`.
 
 
 ### Regression Analysis with Adjustment for Confounders
@@ -189,7 +189,7 @@ output_adjusted_regression %>%
   kable(., align = c("l", "c", "c", "c"))
 ```
 
-The estimate for the effect of heat waves on Yoll is equal to + `r round(output_adjusted_regression$estimate[2], 0)` and the 95% confidence interval is consistent with effects ranging from `r round(output_adjusted_regression$conf.low[2], 0)` up to `r round(output_adjusted_regression$conf.high[2], 0)`. The estimated effect is closer to the true effect of +230 Yoll but is still biased. This regression model may be too simple---we could also include lags of the variables and use different functional forms if we think they could reduce omitted variable bias.
+The estimate for the effect of heat waves on Yoll is equal to + `r round(output_adjusted_regression[2], 0)` and the 95% confidence interval is consistent with effects ranging from `r round(output_adjusted_regression$conf.low, 0)` up to `r round(output_adjusted_regression$conf.high, 0)`. This regression model may be too simple---we could also include lags of the variables and use different functional forms if we think they could reduce omitted variable bias.
 
 We finally save the results from the two outcome regression models in the `3.outputs/1.data/analysis_results` folder:
 

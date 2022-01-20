@@ -15,7 +15,7 @@ author:
     url: https://lzabrocki.github.io/
     affiliation: Paris School of Economics
     affiliation_url: https://www.parisschoolofeconomics.eu/fr/zabrocki-leo/
-date: "2021-11-25"
+date: "2022-01-20"
 output: 
     distill::distill_article:
       keep_md: true
@@ -169,12 +169,12 @@ where $t$ is the time index, $\beta$ is the coefficient of interest and $\epsilo
 
 |Term      | Estimate | 95% CI Lower Bound | 95% CI Upper Bound |
 |:---------|:--------:|:------------------:|:------------------:|
-|heat_wave |   416    |        378         |        454         |
+|heat_wave |   416    |        377         |        454         |
 
 </div>
 
 
-The estimate for the effect of heat waves on Yoll is equal to + NA and the 95% confidence interval is consistent with effects ranging from NA up to NA. However, the estimate is far from the true effect of +230 Yoll and is likely biased by confounders.
+The estimate for the effect of heat waves on Yoll is equal to + 416 and the 95% confidence interval is consistent with effects ranging from 377 up to 454.
 
 
 ### Regression Analysis with Adjustment for Confounders
@@ -209,12 +209,12 @@ where $WP$ is the vector of weather and air pollutants variables and $C_{t}$ the
 
 |Term      | Estimate | 95% CI Lower Bound | 95% CI Upper Bound |
 |:---------|:--------:|:------------------:|:------------------:|
-|heat_wave |   293    |        279         |        307         |
+|heat_wave |   293    |        279         |        306         |
 
 </div>
 
 
-The estimate for the effect of heat waves on Yoll is equal to + NA and the 95% confidence interval is consistent with effects ranging from NA up to NA. The estimated effect is closer to the true effect of +230 Yoll but is still biased. This regression model may be too simple---we could also include lags of the variables and use different functional forms if we think they could reduce omitted variable bias.
+The estimate for the effect of heat waves on Yoll is equal to + 293 and the 95% confidence interval is consistent with effects ranging from 279 up to 306. This regression model may be too simple---we could also include lags of the variables and use different functional forms if we think they could reduce omitted variable bias.
 
 We finally save the results from the two outcome regression models in the `3.outputs/1.data/analysis_results` folder:
 
