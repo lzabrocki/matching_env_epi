@@ -312,10 +312,10 @@ data %>%
   # select days where an heat wave occurred
   filter(heat_wave == 1) %>%
   # compute the average difference in potential outcomes
-  summarise(ATT = mean(y_1 - y_0))
+  summarise(ATT = mean(y_1 - y_0) %>% round(., 0))
 ```
 
-We can also assess this difference by plotting the distribution of the potential outcomes for treated units:
+We can assess this difference by plotting the distribution of the potential outcomes for treated units:
 
 ```{r, fig.width=8, fig.height=4, code_folding="Please show me the code!"}
 # compute the average of potential outcomes
@@ -351,6 +351,7 @@ graph_po_densities <- data %>%
     aes(xintercept = mean_po, colour = potential_outcomes),
     key_glyph = "blank"
   ) +
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) +
   scale_color_manual(name = "Potential Outcomes:", values = c(my_blue, my_orange)) +
   ggtitle("Distribution of Potential Outcomes by Treatment Status") +
   xlab("Daily Number of Years of Life Lost") + ylab("Density") +
@@ -371,7 +372,13 @@ ggsave(
   device = cairo_pdf
 )
 ```
+We can also compute the average treatment effect for all units (ATE):
 
+```{r}
+data %>%
+  # compute the average difference in potential outcomes
+  summarise(ATE = mean(y_1 - y_0) %>% round(., 0))
+```
 
 For each unit, we finally express the observed number of years of life lost according to the treatment assignment:
 
